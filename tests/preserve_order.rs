@@ -6,9 +6,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-extern crate serde_json;
+extern crate serde_edn;
 
-use serde_json::{from_str, Value};
+use serde_edn::{from_str, Value};
 
 #[test]
 fn test_map_order() {

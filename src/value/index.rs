@@ -12,33 +12,33 @@ use std::ops;
 use super::Value;
 use map::Map;
 
-/// A type that can be used to index into a `serde_json::Value`.
+/// A type that can be used to index into a `serde_edn::Value`.
 ///
 /// The [`get`] and [`get_mut`] methods of `Value` accept any type that
 /// implements `Index`, as does the [square-bracket indexing operator]. This
-/// trait is implemented for strings which are used as the index into a JSON
-/// map, and for `usize` which is used as the index into a JSON array.
+/// trait is implemented for strings which are used as the index into a edn
+/// map, and for `usize` which is used as the index into a edn array.
 ///
 /// [`get`]: ../enum.Value.html#method.get
 /// [`get_mut`]: ../enum.Value.html#method.get_mut
 /// [square-bracket indexing operator]: ../enum.Value.html#impl-Index%3CI%3E
 ///
 /// This trait is sealed and cannot be implemented for types outside of
-/// `serde_json`.
+/// `serde_edn`.
 ///
 /// # Examples
 ///
 /// ```rust
 /// # #[macro_use]
-/// # extern crate serde_json;
+/// # extern crate serde_edn;
 /// #
 /// # fn main() {
-/// let data = json!({ "inner": [1, 2, 3] });
+/// let data = edn!({ "inner": [1, 2, 3] });
 ///
-/// // Data is a JSON map so it can be indexed with a string.
+/// // Data is a edn map so it can be indexed with a string.
 /// let inner = &data["inner"];
 ///
-/// // Inner is a JSON array so it can be indexed with an integer.
+/// // Inner is a edn array so it can be indexed with an integer.
 /// let first = &inner[0];
 ///
 /// assert_eq!(first, 1);
@@ -80,12 +80,12 @@ impl Index for usize {
                 let len = vec.len();
                 vec.get_mut(*self).unwrap_or_else(|| {
                     panic!(
-                        "cannot access index {} of JSON array of length {}",
+                        "cannot access index {} of edn array of length {}",
                         self, len
                     )
                 })
             }
-            _ => panic!("cannot access index {} of JSON {}", self, Type(v)),
+            _ => panic!("cannot access index {} of edn {}", self, Type(v)),
         }
     }
 }
@@ -109,7 +109,7 @@ impl Index for str {
         }
         match *v {
             Value::Object(ref mut map) => map.entry(self.to_owned()).or_insert(Value::Null),
-            _ => panic!("cannot access key {:?} in JSON {}", self, Type(v)),
+            _ => panic!("cannot access key {:?} in edn {}", self, Type(v)),
         }
     }
 }
@@ -172,7 +172,7 @@ impl<'a> fmt::Display for Type<'a> {
 // have different use cases than Value. If you are working with a Vec, you know
 // that you are working with a Vec and you can get the len of the Vec and make
 // sure your indices are within bounds. The Value use cases are more
-// loosey-goosey. You got some JSON from an endpoint and you want to pull values
+// loosey-goosey. You got some edn from an endpoint and you want to pull values
 // out of it. Outside of this Index impl, you already have the option of using
 // value.as_array() and working with the Vec directly, or matching on
 // Value::Array and getting the Vec directly. The Index impl means you can skip
@@ -191,7 +191,7 @@ where
 {
     type Output = Value;
 
-    /// Index into a `serde_json::Value` using the syntax `value[0]` or
+    /// Index into a `serde_edn::Value` using the syntax `value[0]` or
     /// `value["k"]`.
     ///
     /// Returns `Value::Null` if the type of `self` does not match the type of
@@ -206,20 +206,20 @@ where
     ///
     /// ```rust
     /// # #[macro_use]
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// let data = json!({
+    /// let data = edn!({
     ///     "x": {
     ///         "y": ["z", "zz"]
     ///     }
     /// });
     ///
-    /// assert_eq!(data["x"]["y"], json!(["z", "zz"]));
-    /// assert_eq!(data["x"]["y"][0], json!("z"));
+    /// assert_eq!(data["x"]["y"], edn!(["z", "zz"]));
+    /// assert_eq!(data["x"]["y"][0], edn!("z"));
     ///
-    /// assert_eq!(data["a"], json!(null)); // returns null for undefined values
-    /// assert_eq!(data["a"]["b"], json!(null)); // does not panic
+    /// assert_eq!(data["a"], edn!(null)); // returns null for undefined values
+    /// assert_eq!(data["a"]["b"], edn!(null)); // does not panic
     /// # }
     /// ```
     fn index(&self, index: I) -> &Value {
@@ -232,7 +232,7 @@ impl<I> ops::IndexMut<I> for Value
 where
     I: Index,
 {
-    /// Write into a `serde_json::Value` using the syntax `value[0] = ...` or
+    /// Write into a `serde_edn::Value` using the syntax `value[0] = ...` or
     /// `value["k"] = ...`.
     ///
     /// If the index is a number, the value must be an array of length bigger
@@ -248,22 +248,22 @@ where
     ///
     /// ```rust
     /// # #[macro_use]
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// let mut data = json!({ "x": 0 });
+    /// let mut data = edn!({ "x": 0 });
     ///
     /// // replace an existing key
-    /// data["x"] = json!(1);
+    /// data["x"] = edn!(1);
     ///
     /// // insert a new key
-    /// data["y"] = json!([false, false, false]);
+    /// data["y"] = edn!([false, false, false]);
     ///
     /// // replace an array value
-    /// data["y"][0] = json!(true);
+    /// data["y"][0] = edn!(true);
     ///
     /// // inserted a deeply nested key
-    /// data["a"]["b"]["c"]["d"] = json!(true);
+    /// data["a"]["b"]["c"]["d"] = edn!(true);
     ///
     /// println!("{}", data);
     /// # }

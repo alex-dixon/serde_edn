@@ -1,7 +1,7 @@
 error: no rules expected the token `=>`
   --> $DIR/unexpected_after_array_element.rs:13:18
    |
-13 |     json!([ true => ]);
+13 |     edn!([ true => ]);
    |                  ^^ no rules expected this token in macro call
 
 error: aborting due to previous error

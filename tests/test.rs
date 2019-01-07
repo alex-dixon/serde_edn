@@ -18,7 +18,7 @@ extern crate serde_derive;
 extern crate serde;
 extern crate serde_bytes;
 #[macro_use]
-extern crate serde_json;
+extern crate serde_edn;
 
 #[macro_use]
 mod macros;
@@ -39,7 +39,7 @@ use serde::ser::{self, Serialize, Serializer};
 
 use serde_bytes::{ByteBuf, Bytes};
 
-use serde_json::{
+use serde_edn::{
     from_reader, from_slice, from_str, from_value, to_string, to_string_pretty, to_value, to_vec,
     to_writer, Deserializer, Number, Value,
 };
@@ -238,11 +238,11 @@ fn test_write_list() {
         (vec![true, false], pretty_str!([true, false])),
     ]);
 
-    let long_test_list = json!([false, null, ["foo\nbar", 3.5]]);
+    let long_test_list = edn!([false, null, ["foo\nbar", 3.5]]);
 
     test_encode_ok(&[(
         long_test_list.clone(),
-        json_str!([false, null, ["foo\nbar", 3.5]]),
+        edn_str!([false, null, ["foo\nbar", 3.5]]),
     )]);
 
     test_pretty_encode_ok(&[(
@@ -427,7 +427,7 @@ fn test_write_object() {
         ),
     ]);
 
-    let complex_obj = json!({
+    let complex_obj = edn!({
         "b": [
             {"c": "\x0c\x1f\r"},
             {"d": ""}
@@ -436,7 +436,7 @@ fn test_write_object() {
 
     test_encode_ok(&[(
         complex_obj.clone(),
-        json_str!({
+        edn_str!({
             "b": [
                 {
                     "c": (r#""\f\u001f\r""#)
@@ -593,20 +593,20 @@ where
         assert_eq!(v, value.clone());
 
         // Make sure we can deserialize into a `Value`.
-        let json_value: Value = from_str(s).unwrap();
-        assert_eq!(json_value, to_value(&value).unwrap());
+        let edn_value: Value = from_str(s).unwrap();
+        assert_eq!(edn_value, to_value(&value).unwrap());
 
         // Make sure we can deserialize from a `&Value`.
-        let v = T::deserialize(&json_value).unwrap();
+        let v = T::deserialize(&edn_value).unwrap();
         assert_eq!(v, value);
 
         // Make sure we can deserialize from a `Value`.
-        let v: T = from_value(json_value.clone()).unwrap();
+        let v: T = from_value(edn_value.clone()).unwrap();
         assert_eq!(v, value);
 
         // Make sure we can round trip back to `Value`.
-        let json_value2: Value = from_value(json_value.clone()).unwrap();
-        assert_eq!(json_value2, json_value);
+        let edn_value2: Value = from_value(edn_value.clone()).unwrap();
+        assert_eq!(edn_value2, edn_value);
 
         // Make sure we can fully ignore.
         let twoline = s.to_owned() + "\n3735928559";
@@ -616,7 +616,7 @@ where
 
         // Make sure every prefix is an EOF error, except that a prefix of a
         // number may be a valid number.
-        if !json_value.is_number() {
+        if !edn_value.is_number() {
             for (i, _) in s.trim_end().char_indices() {
                 assert!(from_str::<Value>(&s[..i]).unwrap_err().is_eof());
                 assert!(from_str::<IgnoredAny>(&s[..i]).unwrap_err().is_eof());
@@ -922,7 +922,7 @@ fn test_parse_f64() {
 
 #[test]
 fn test_serialize_char() {
-    let value = json!(
+    let value = edn!(
         ({
             let mut map = BTreeMap::new();
             map.insert('c', ());
@@ -936,13 +936,13 @@ fn test_serialize_char() {
 #[test]
 fn test_malicious_number() {
     #[derive(Serialize)]
-    #[serde(rename = "$serde_json::private::Number")]
+    #[serde(rename = "$serde_edn::private::Number")]
     struct S {
-        #[serde(rename = "$serde_json::private::Number")]
+        #[serde(rename = "$serde_edn::private::Number")]
         f: &'static str,
     }
 
-    let actual = serde_json::to_value(&S { f: "not a number" })
+    let actual = serde_edn::to_value(&S { f: "not a number" })
         .unwrap_err()
         .to_string();
     assert_eq!(actual, "invalid number at line 1 column 1");
@@ -1203,7 +1203,7 @@ fn test_parse_struct() {
         }
     );
 
-    let j = json!([null, 2, []]);
+    let j = edn!([null, 2, []]);
     Inner::deserialize(&j).unwrap();
     Inner::deserialize(j).unwrap();
 }
@@ -1252,7 +1252,7 @@ fn test_parse_enum_errors() {
             ("{\"Cat\":{\"age\": 5, \"name\": \"Kate\", \"foo\":\"bar\"}",
              "unknown field `foo`, expected `age` or `name` at line 1 column 39"),
 
-            // JSON does not allow trailing commas in data structures
+            // edn does not allow trailing commas in data structures
             ("{\"Cat\":[0, \"Kate\",]}", "trailing comma at line 1 column 19"),
             ("{\"Cat\":{\"age\": 2, \"name\": \"Kate\",}}",
              "trailing comma at line 1 column 34"),
@@ -1343,10 +1343,10 @@ fn test_missing_option_field() {
     let value: Foo = from_str("{\"x\": 5}").unwrap();
     assert_eq!(value, Foo { x: Some(5) });
 
-    let value: Foo = from_value(json!({})).unwrap();
+    let value: Foo = from_value(edn!({})).unwrap();
     assert_eq!(value, Foo { x: None });
 
-    let value: Foo = from_value(json!({"x": 5})).unwrap();
+    let value: Foo = from_value(edn!({"x": 5})).unwrap();
     assert_eq!(value, Foo { x: Some(5) });
 }
 
@@ -1374,10 +1374,10 @@ fn test_missing_renamed_field() {
     let value: Foo = from_str("{\"y\": 5}").unwrap();
     assert_eq!(value, Foo { x: Some(5) });
 
-    let value: Foo = from_value(json!({})).unwrap();
+    let value: Foo = from_value(edn!({})).unwrap();
     assert_eq!(value, Foo { x: None });
 
-    let value: Foo = from_value(json!({"y": 5})).unwrap();
+    let value: Foo = from_value(edn!({"y": 5})).unwrap();
     assert_eq!(value, Foo { x: Some(5) });
 }
 
@@ -1663,7 +1663,7 @@ fn test_byte_buf_de_multiple() {
 }
 
 #[test]
-fn test_json_pointer() {
+fn test_edn_pointer() {
     // Test case taken from https://tools.ietf.org/html/rfc6901#page-5
     let data: Value = from_str(
         r#"{
@@ -1681,17 +1681,17 @@ fn test_json_pointer() {
     )
     .unwrap();
     assert_eq!(data.pointer("").unwrap(), &data);
-    assert_eq!(data.pointer("/foo").unwrap(), &json!(["bar", "baz"]));
-    assert_eq!(data.pointer("/foo/0").unwrap(), &json!("bar"));
-    assert_eq!(data.pointer("/").unwrap(), &json!(0));
-    assert_eq!(data.pointer("/a~1b").unwrap(), &json!(1));
-    assert_eq!(data.pointer("/c%d").unwrap(), &json!(2));
-    assert_eq!(data.pointer("/e^f").unwrap(), &json!(3));
-    assert_eq!(data.pointer("/g|h").unwrap(), &json!(4));
-    assert_eq!(data.pointer("/i\\j").unwrap(), &json!(5));
-    assert_eq!(data.pointer("/k\"l").unwrap(), &json!(6));
-    assert_eq!(data.pointer("/ ").unwrap(), &json!(7));
-    assert_eq!(data.pointer("/m~0n").unwrap(), &json!(8));
+    assert_eq!(data.pointer("/foo").unwrap(), &edn!(["bar", "baz"]));
+    assert_eq!(data.pointer("/foo/0").unwrap(), &edn!("bar"));
+    assert_eq!(data.pointer("/").unwrap(), &edn!(0));
+    assert_eq!(data.pointer("/a~1b").unwrap(), &edn!(1));
+    assert_eq!(data.pointer("/c%d").unwrap(), &edn!(2));
+    assert_eq!(data.pointer("/e^f").unwrap(), &edn!(3));
+    assert_eq!(data.pointer("/g|h").unwrap(), &edn!(4));
+    assert_eq!(data.pointer("/i\\j").unwrap(), &edn!(5));
+    assert_eq!(data.pointer("/k\"l").unwrap(), &edn!(6));
+    assert_eq!(data.pointer("/ ").unwrap(), &edn!(7));
+    assert_eq!(data.pointer("/m~0n").unwrap(), &edn!(8));
     // Invalid pointers
     assert!(data.pointer("/unknown").is_none());
     assert!(data.pointer("/e^f/ertz").is_none());
@@ -1700,7 +1700,7 @@ fn test_json_pointer() {
 }
 
 #[test]
-fn test_json_pointer_mut() {
+fn test_edn_pointer_mut() {
     use std::mem;
 
     // Test case taken from https://tools.ietf.org/html/rfc6901#page-5
@@ -1721,8 +1721,8 @@ fn test_json_pointer_mut() {
     .unwrap();
 
     // Basic pointer checks
-    assert_eq!(data.pointer_mut("/foo").unwrap(), &json!(["bar", "baz"]));
-    assert_eq!(data.pointer_mut("/foo/0").unwrap(), &json!("bar"));
+    assert_eq!(data.pointer_mut("/foo").unwrap(), &edn!(["bar", "baz"]));
+    assert_eq!(data.pointer_mut("/foo/0").unwrap(), &edn!("bar"));
     assert_eq!(data.pointer_mut("/").unwrap(), 0);
     assert_eq!(data.pointer_mut("/a~1b").unwrap(), 1);
     assert_eq!(data.pointer_mut("/c%d").unwrap(), 2);
@@ -1742,17 +1742,17 @@ fn test_json_pointer_mut() {
     // Mutable pointer checks
     *data.pointer_mut("/").unwrap() = 100.into();
     assert_eq!(data.pointer("/").unwrap(), 100);
-    *data.pointer_mut("/foo/0").unwrap() = json!("buzz");
-    assert_eq!(data.pointer("/foo/0").unwrap(), &json!("buzz"));
+    *data.pointer_mut("/foo/0").unwrap() = edn!("buzz");
+    assert_eq!(data.pointer("/foo/0").unwrap(), &edn!("buzz"));
 
     // Example of ownership stealing
     assert_eq!(
         data.pointer_mut("/a~1b")
-            .map(|m| mem::replace(m, json!(null)))
+            .map(|m| mem::replace(m, edn!(null)))
             .unwrap(),
         1
     );
-    assert_eq!(data.pointer("/a~1b").unwrap(), &json!(null));
+    assert_eq!(data.pointer("/a~1b").unwrap(), &edn!(null));
 
     // Need to compare against a clone so we don't anger the borrow checker
     // by taking out two references to a mutable value
@@ -1805,7 +1805,7 @@ fn test_deny_float_key() {
 
     // map with float key
     let map = treemap!(Float => "x");
-    assert!(serde_json::to_value(&map).is_err());
+    assert!(serde_edn::to_value(&map).is_err());
 }
 
 #[test]
@@ -1849,28 +1849,28 @@ fn test_effectively_string_keys() {
 }
 
 #[test]
-fn test_json_macro() {
+fn test_edn_macro() {
     // This is tricky because the <...> is not a single TT and the comma inside
     // looks like an array element separator.
-    let _ = json!([
+    let _ = edn!([
         <Result<(), ()> as Clone>::clone(&Ok(())),
         <Result<(), ()> as Clone>::clone(&Err(()))
     ]);
 
     // Same thing but in the map values.
-    let _ = json!({
+    let _ = edn!({
         "ok": <Result<(), ()> as Clone>::clone(&Ok(())),
         "err": <Result<(), ()> as Clone>::clone(&Err(()))
     });
 
     // It works in map keys but only if they are parenthesized.
-    let _ = json!({
+    let _ = edn!({
         (<Result<&str, ()> as Clone>::clone(&Ok("")).unwrap()): "ok",
         (<Result<(), &str> as Clone>::clone(&Err("")).unwrap_err()): "err"
     });
 
     #[deny(unused_results)]
-    let _ = json!({ "architecture": [true, null] });
+    let _ = edn!({ "architecture": [true, null] });
 }
 
 #[test]
@@ -2014,7 +2014,7 @@ fn test_borrow() {
 
 #[test]
 fn null_invalid_type() {
-    let err = serde_json::from_str::<String>("null").unwrap_err();
+    let err = serde_edn::from_str::<String>("null").unwrap_err();
     assert_eq!(
         format!("{}", err),
         String::from("invalid type: null, expected a string at line 1 column 4")
@@ -2061,7 +2061,7 @@ fn test_integer128() {
 #[cfg(feature = "raw_value")]
 #[test]
 fn test_borrowed_raw_value() {
-    use serde_json::value::RawValue;
+    use serde_edn::value::RawValue;
 
     #[derive(Serialize, Deserialize)]
     struct Wrapper<'a> {
@@ -2072,30 +2072,30 @@ fn test_borrowed_raw_value() {
     };
 
     let wrapper_from_str: Wrapper =
-        serde_json::from_str(r#"{"a": 1, "b": {"foo": 2}, "c": 3}"#).unwrap();
+        serde_edn::from_str(r#"{"a": 1, "b": {"foo": 2}, "c": 3}"#).unwrap();
     assert_eq!(r#"{"foo": 2}"#, wrapper_from_str.b.get());
 
-    let wrapper_to_string = serde_json::to_string(&wrapper_from_str).unwrap();
+    let wrapper_to_string = serde_edn::to_string(&wrapper_from_str).unwrap();
     assert_eq!(r#"{"a":1,"b":{"foo": 2},"c":3}"#, wrapper_to_string);
 
-    let wrapper_to_value = serde_json::to_value(&wrapper_from_str).unwrap();
-    assert_eq!(json!({"a": 1, "b": {"foo": 2}, "c": 3}), wrapper_to_value);
+    let wrapper_to_value = serde_edn::to_value(&wrapper_from_str).unwrap();
+    assert_eq!(edn!({"a": 1, "b": {"foo": 2}, "c": 3}), wrapper_to_value);
 
     let array_from_str: Vec<&RawValue> =
-        serde_json::from_str(r#"["a", 42, {"foo": "bar"}, null]"#).unwrap();
+        serde_edn::from_str(r#"["a", 42, {"foo": "bar"}, null]"#).unwrap();
     assert_eq!(r#""a""#, array_from_str[0].get());
     assert_eq!(r#"42"#, array_from_str[1].get());
     assert_eq!(r#"{"foo": "bar"}"#, array_from_str[2].get());
     assert_eq!(r#"null"#, array_from_str[3].get());
 
-    let array_to_string = serde_json::to_string(&array_from_str).unwrap();
+    let array_to_string = serde_edn::to_string(&array_from_str).unwrap();
     assert_eq!(r#"["a",42,{"foo": "bar"},null]"#, array_to_string);
 }
 
 #[cfg(feature = "raw_value")]
 #[test]
 fn test_boxed_raw_value() {
-    use serde_json::value::RawValue;
+    use serde_edn::value::RawValue;
 
     #[derive(Serialize, Deserialize)]
     struct Wrapper {
@@ -2105,38 +2105,38 @@ fn test_boxed_raw_value() {
     };
 
     let wrapper_from_str: Wrapper =
-        serde_json::from_str(r#"{"a": 1, "b": {"foo": 2}, "c": 3}"#).unwrap();
+        serde_edn::from_str(r#"{"a": 1, "b": {"foo": 2}, "c": 3}"#).unwrap();
     assert_eq!(r#"{"foo": 2}"#, wrapper_from_str.b.get());
 
     let wrapper_from_reader: Wrapper =
-        serde_json::from_reader(br#"{"a": 1, "b": {"foo": 2}, "c": 3}"#.as_ref()).unwrap();
+        serde_edn::from_reader(br#"{"a": 1, "b": {"foo": 2}, "c": 3}"#.as_ref()).unwrap();
     assert_eq!(r#"{"foo": 2}"#, wrapper_from_reader.b.get());
 
     let wrapper_from_value: Wrapper =
-        serde_json::from_value(json!({"a": 1, "b": {"foo": 2}, "c": 3})).unwrap();
+        serde_edn::from_value(edn!({"a": 1, "b": {"foo": 2}, "c": 3})).unwrap();
     assert_eq!(r#"{"foo":2}"#, wrapper_from_value.b.get());
 
-    let wrapper_to_string = serde_json::to_string(&wrapper_from_str).unwrap();
+    let wrapper_to_string = serde_edn::to_string(&wrapper_from_str).unwrap();
     assert_eq!(r#"{"a":1,"b":{"foo": 2},"c":3}"#, wrapper_to_string);
 
-    let wrapper_to_value = serde_json::to_value(&wrapper_from_str).unwrap();
-    assert_eq!(json!({"a": 1, "b": {"foo": 2}, "c": 3}), wrapper_to_value);
+    let wrapper_to_value = serde_edn::to_value(&wrapper_from_str).unwrap();
+    assert_eq!(edn!({"a": 1, "b": {"foo": 2}, "c": 3}), wrapper_to_value);
 
     let array_from_str: Vec<Box<RawValue>> =
-        serde_json::from_str(r#"["a", 42, {"foo": "bar"}, null]"#).unwrap();
+        serde_edn::from_str(r#"["a", 42, {"foo": "bar"}, null]"#).unwrap();
     assert_eq!(r#""a""#, array_from_str[0].get());
     assert_eq!(r#"42"#, array_from_str[1].get());
     assert_eq!(r#"{"foo": "bar"}"#, array_from_str[2].get());
     assert_eq!(r#"null"#, array_from_str[3].get());
 
     let array_from_reader: Vec<Box<RawValue>> =
-        serde_json::from_reader(br#"["a", 42, {"foo": "bar"}, null]"#.as_ref()).unwrap();
+        serde_edn::from_reader(br#"["a", 42, {"foo": "bar"}, null]"#.as_ref()).unwrap();
     assert_eq!(r#""a""#, array_from_reader[0].get());
     assert_eq!(r#"42"#, array_from_reader[1].get());
     assert_eq!(r#"{"foo": "bar"}"#, array_from_reader[2].get());
     assert_eq!(r#"null"#, array_from_reader[3].get());
 
-    let array_to_string = serde_json::to_string(&array_from_str).unwrap();
+    let array_to_string = serde_edn::to_string(&array_from_str).unwrap();
     assert_eq!(r#"["a",42,{"foo": "bar"},null]"#, array_to_string);
 }
 
@@ -2161,6 +2161,6 @@ fn test_borrow_in_map_key() {
         }
     }
 
-    let value = json!({ "map": { "1": null } });
+    let value = edn!({ "map": { "1": null } });
     Outer::deserialize(&value).unwrap();
 }

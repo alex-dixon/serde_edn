@@ -40,7 +40,7 @@ impl<'de> Deserialize<'de> for Value {
             type Value = Value;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter.write_str("any valid JSON value")
+                formatter.write_str("any valid edn value")
             }
 
             #[inline]
@@ -278,7 +278,7 @@ impl<'de> serde::Deserializer<'de> for Value {
                         ));
                     }
                 };
-                // enums are encoded in json as maps with a single key:value pair
+                // enums are encoded in edn as maps with a single key:value pair
                 if iter.next().is_some() {
                     return Err(serde::de::Error::invalid_value(
                         Unexpected::Map,
@@ -817,7 +817,7 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
                         ));
                     }
                 };
-                // enums are encoded in json as maps with a single key:value pair
+                // enums are encoded in edn as maps with a single key:value pair
                 if iter.next().is_some() {
                     return Err(serde::de::Error::invalid_value(
                         Unexpected::Map,

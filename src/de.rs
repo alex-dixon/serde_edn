@@ -6,7 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Deserialize JSON data to a Rust data structure.
+//! Deserialize edn data to a Rust data structure.
 
 use std::io;
 use std::marker::PhantomData;
@@ -28,7 +28,7 @@ use number::NumberDeserializer;
 
 //////////////////////////////////////////////////////////////////////////////
 
-/// A structure that deserializes JSON into Rust values.
+/// A structure that deserializes edn into Rust values.
 pub struct Deserializer<R> {
     read: R,
     scratch: Vec<u8>,
@@ -39,7 +39,7 @@ impl<'de, R> Deserializer<R>
 where
     R: read::Read<'de>,
 {
-    /// Create a JSON deserializer from one of the possible serde_json input
+    /// Create a edn deserializer from one of the possible serde_edn input
     /// sources.
     ///
     /// Typically it is more convenient to use one of these methods instead:
@@ -60,21 +60,21 @@ impl<R> Deserializer<read::IoRead<R>>
 where
     R: io::Read,
 {
-    /// Creates a JSON deserializer from an `io::Read`.
+    /// Creates a edn deserializer from an `io::Read`.
     pub fn from_reader(reader: R) -> Self {
         Deserializer::new(read::IoRead::new(reader))
     }
 }
 
 impl<'a> Deserializer<read::SliceRead<'a>> {
-    /// Creates a JSON deserializer from a `&[u8]`.
+    /// Creates a edn deserializer from a `&[u8]`.
     pub fn from_slice(bytes: &'a [u8]) -> Self {
         Deserializer::new(read::SliceRead::new(bytes))
     }
 }
 
 impl<'a> Deserializer<read::StrRead<'a>> {
-    /// Creates a JSON deserializer from a `&str`.
+    /// Creates a edn deserializer from a `&str`.
     pub fn from_str(s: &'a str) -> Self {
         Deserializer::new(read::StrRead::new(s))
     }
@@ -132,7 +132,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         }
     }
 
-    /// Turn a JSON deserializer into an iterator over values of type T.
+    /// Turn a edn deserializer into an iterator over values of type T.
     pub fn into_iter<T>(self) -> StreamDeserializer<'de, R, T>
     where
         T: de::Deserialize<'de>,
@@ -1230,14 +1230,14 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
         self.deserialize_str(visitor)
     }
 
-    /// Parses a JSON string as bytes. Note that this function does not check
+    /// Parses a edn string as bytes. Note that this function does not check
     /// whether the bytes represent a valid UTF-8 string.
     ///
-    /// The relevant part of the JSON specification is Section 8.2 of [RFC
+    /// The relevant part of the edn specification is Section 8.2 of [RFC
     /// 7159]:
     ///
-    /// > When all the strings represented in a JSON text are composed entirely
-    /// > of Unicode characters (however escaped), then that JSON text is
+    /// > When all the strings represented in a edn text are composed entirely
+    /// > of Unicode characters (however escaped), then that edn text is
     /// > interoperable in the sense that all software implementations that
     /// > parse it will agree on the contents of names and of string values in
     /// > objects and arrays.
@@ -1247,14 +1247,14 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     /// > for example, "\uDEAD" (a single unpaired UTF-16 surrogate). Instances
     /// > of this have been observed, for example, when a library truncates a
     /// > UTF-16 string without checking whether the truncation split a
-    /// > surrogate pair.  The behavior of software that receives JSON texts
+    /// > surrogate pair.  The behavior of software that receives edn texts
     /// > containing such values is unpredictable; for example, implementations
     /// > might return different values for the length of a string value or even
     /// > suffer fatal runtime exceptions.
     ///
     /// [RFC 7159]: https://tools.ietf.org/html/rfc7159
     ///
-    /// The behavior of serde_json is specified to fail on non-UTF-8 strings
+    /// The behavior of serde_edn is specified to fail on non-UTF-8 strings
     /// when deserializing into Rust UTF-8 string types such as String, and
     /// succeed with non-UTF-8 bytes when deserializing using this method.
     ///
@@ -1263,17 +1263,17 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     ///
     /// # Examples
     ///
-    /// You can use this to parse JSON strings containing invalid UTF-8 bytes.
+    /// You can use this to parse edn strings containing invalid UTF-8 bytes.
     ///
     /// ```rust
-    /// extern crate serde_json;
+    /// extern crate serde_edn;
     /// extern crate serde_bytes;
     ///
     /// use serde_bytes::ByteBuf;
     ///
-    /// fn look_at_bytes() -> Result<(), serde_json::Error> {
-    ///     let json_data = b"\"some bytes: \xe5\x00\xe5\"";
-    ///     let bytes: ByteBuf = serde_json::from_slice(json_data)?;
+    /// fn look_at_bytes() -> Result<(), serde_edn::Error> {
+    ///     let edn_data = b"\"some bytes: \xe5\x00\xe5\"";
+    ///     let bytes: ByteBuf = serde_edn::from_slice(edn_data)?;
     ///
     ///     assert_eq!(b'\xe5', bytes[12]);
     ///     assert_eq!(b'\0', bytes[13]);
@@ -1292,14 +1292,14 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     /// Unicode code points.
     ///
     /// ```rust
-    /// extern crate serde_json;
+    /// extern crate serde_edn;
     /// extern crate serde_bytes;
     ///
     /// use serde_bytes::ByteBuf;
     ///
     /// fn look_at_bytes() {
-    ///     let json_data = b"\"invalid unicode surrogate: \\uD801\"";
-    ///     let parsed: Result<ByteBuf, _> = serde_json::from_slice(json_data);
+    ///     let edn_data = b"\"invalid unicode surrogate: \\uD801\"";
+    ///     let parsed: Result<ByteBuf, _> = serde_edn::from_slice(edn_data);
     ///
     ///     assert!(parsed.is_err());
     ///
@@ -1846,7 +1846,7 @@ impl<'de, 'a, R: Read<'de> + 'a> de::VariantAccess<'de> for UnitVariantAccess<'a
 }
 
 /// Only deserialize from this after peeking a '"' byte! Otherwise it may
-/// deserialize invalid JSON successfully.
+/// deserialize invalid edn successfully.
 struct MapKey<'a, R: 'a> {
     de: &'a mut Deserializer<R>,
 }
@@ -1956,18 +1956,18 @@ where
 
 //////////////////////////////////////////////////////////////////////////////
 
-/// Iterator that deserializes a stream into multiple JSON values.
+/// Iterator that deserializes a stream into multiple edn values.
 ///
-/// A stream deserializer can be created from any JSON deserializer using the
+/// A stream deserializer can be created from any edn deserializer using the
 /// `Deserializer::into_iter` method.
 ///
-/// The data can consist of any JSON value. Values need to be a self-delineating value e.g.
+/// The data can consist of any edn value. Values need to be a self-delineating value e.g.
 /// arrays, objects, or strings, or be followed by whitespace or a self-delineating value.
 ///
 /// ```rust
-/// extern crate serde_json;
+/// extern crate serde_edn;
 ///
-/// use serde_json::{Deserializer, Value};
+/// use serde_edn::{Deserializer, Value};
 ///
 /// fn main() {
 ///     let data = "{\"k\": 3}1\"cool\"\"stuff\" 3{}  [0, 1, 2]";
@@ -1991,7 +1991,7 @@ where
     R: read::Read<'de>,
     T: de::Deserialize<'de>,
 {
-    /// Create a JSON stream deserializer from one of the possible serde_json
+    /// Create a edn stream deserializer from one of the possible serde_edn
     /// input sources.
     ///
     /// Typically it is more convenient to use one of these methods instead:
@@ -2017,7 +2017,7 @@ where
     /// ```rust
     /// let data = b"[0] [1] [";
     ///
-    /// let de = serde_json::Deserializer::from_slice(data);
+    /// let de = serde_edn::Deserializer::from_slice(data);
     /// let mut stream = de.into_iter::<Vec<i32>>();
     /// assert_eq!(0, stream.byte_offset());
     ///
@@ -2036,10 +2036,10 @@ where
     ///
     /// *Note:* In the future this method may be changed to return the number of
     /// bytes so far deserialized into a successful T *or* syntactically valid
-    /// JSON skipped over due to a type error. See [serde-rs/json#70] for an
+    /// edn skipped over due to a type error. See [serde-rs/edn#70] for an
     /// example illustrating this.
     ///
-    /// [serde-rs/json#70]: https://github.com/serde-rs/json/issues/70
+    /// [serde-rs/edn#70]: https://github.com/serde-rs/edn/issues/70
     pub fn byte_offset(&self) -> usize {
         self.offset
     }
@@ -2119,13 +2119,13 @@ where
     Ok(value)
 }
 
-/// Deserialize an instance of type `T` from an IO stream of JSON.
+/// Deserialize an instance of type `T` from an IO stream of edn.
 ///
 /// The content of the IO stream is deserialized directly from the stream
-/// without being buffered in memory by serde_json.
+/// without being buffered in memory by serde_edn.
 ///
 /// When reading from a source against which short reads are not efficient, such
-/// as a [`File`], you will want to apply your own buffering because serde_json
+/// as a [`File`], you will want to apply your own buffering because serde_edn
 /// will not buffer the input. See [`std::io::BufReader`].
 ///
 /// [`File`]: https://doc.rust-lang.org/std/fs/struct.File.html
@@ -2138,7 +2138,7 @@ where
 /// extern crate serde_derive;
 ///
 /// extern crate serde;
-/// extern crate serde_json;
+/// extern crate serde_edn;
 ///
 /// use std::error::Error;
 /// use std::fs::File;
@@ -2156,8 +2156,8 @@ where
 ///     let file = File::open(path)?;
 ///     let reader = BufReader::new(file);
 ///
-///     // Read the JSON contents of the file as an instance of `User`.
-///     let u = serde_json::from_reader(reader)?;
+///     // Read the edn contents of the file as an instance of `User`.
+///     let u = serde_edn::from_reader(reader)?;
 ///
 ///     // Return the `User`.
 ///     Ok(u)
@@ -2166,7 +2166,7 @@ where
 /// fn main() {
 /// # }
 /// # fn fake_main() {
-///     let u = read_user_from_file("test.json").unwrap();
+///     let u = read_user_from_file("test.edn").unwrap();
 ///     println!("{:#?}", u);
 /// }
 /// ```
@@ -2175,10 +2175,10 @@ where
 ///
 /// This conversion can fail if the structure of the input does not match the
 /// structure expected by `T`, for example if `T` is a struct type but the input
-/// contains something other than a JSON map. It can also fail if the structure
+/// contains something other than a edn map. It can also fail if the structure
 /// is correct but `T`'s implementation of `Deserialize` decides that something
 /// is wrong with the data, for example required struct fields are missing from
-/// the JSON map or some number is too big to fit in the expected primitive
+/// the edn map or some number is too big to fit in the expected primitive
 /// type.
 pub fn from_reader<R, T>(rdr: R) -> Result<T>
 where
@@ -2188,7 +2188,7 @@ where
     from_trait(read::IoRead::new(rdr))
 }
 
-/// Deserialize an instance of type `T` from bytes of JSON text.
+/// Deserialize an instance of type `T` from bytes of edn text.
 ///
 /// # Example
 ///
@@ -2197,7 +2197,7 @@ where
 /// extern crate serde_derive;
 ///
 /// extern crate serde;
-/// extern crate serde_json;
+/// extern crate serde_edn;
 ///
 /// #[derive(Deserialize, Debug)]
 /// struct User {
@@ -2212,7 +2212,7 @@ where
 ///                 \"location\": \"Menlo Park, CA\"
 ///               }";
 ///
-///     let u: User = serde_json::from_slice(j).unwrap();
+///     let u: User = serde_edn::from_slice(j).unwrap();
 ///     println!("{:#?}", u);
 /// }
 /// ```
@@ -2221,10 +2221,10 @@ where
 ///
 /// This conversion can fail if the structure of the input does not match the
 /// structure expected by `T`, for example if `T` is a struct type but the input
-/// contains something other than a JSON map. It can also fail if the structure
+/// contains something other than a edn map. It can also fail if the structure
 /// is correct but `T`'s implementation of `Deserialize` decides that something
 /// is wrong with the data, for example required struct fields are missing from
-/// the JSON map or some number is too big to fit in the expected primitive
+/// the edn map or some number is too big to fit in the expected primitive
 /// type.
 pub fn from_slice<'a, T>(v: &'a [u8]) -> Result<T>
 where
@@ -2233,7 +2233,7 @@ where
     from_trait(read::SliceRead::new(v))
 }
 
-/// Deserialize an instance of type `T` from a string of JSON text.
+/// Deserialize an instance of type `T` from a string of edn text.
 ///
 /// # Example
 ///
@@ -2242,7 +2242,7 @@ where
 /// extern crate serde_derive;
 ///
 /// extern crate serde;
-/// extern crate serde_json;
+/// extern crate serde_edn;
 ///
 /// #[derive(Deserialize, Debug)]
 /// struct User {
@@ -2257,7 +2257,7 @@ where
 ///                \"location\": \"Menlo Park, CA\"
 ///              }";
 ///
-///     let u: User = serde_json::from_str(j).unwrap();
+///     let u: User = serde_edn::from_str(j).unwrap();
 ///     println!("{:#?}", u);
 /// }
 /// ```
@@ -2266,10 +2266,10 @@ where
 ///
 /// This conversion can fail if the structure of the input does not match the
 /// structure expected by `T`, for example if `T` is a struct type but the input
-/// contains something other than a JSON map. It can also fail if the structure
+/// contains something other than a edn map. It can also fail if the structure
 /// is correct but `T`'s implementation of `Deserialize` decides that something
 /// is wrong with the data, for example required struct fields are missing from
-/// the JSON map or some number is too big to fit in the expected primitive
+/// the edn map or some number is too big to fit in the expected primitive
 /// type.
 pub fn from_str<'a, T>(s: &'a str) -> Result<T>
 where

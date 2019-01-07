@@ -13,7 +13,7 @@ Please reach out here in a GitHub issue or in the #serde IRC channel on
 
 Serde development is spread across lots of repositories. In general, prefer to
 open issues against the main [serde-rs/serde] repository unless the topic is
-clearly specific to JSON.
+clearly specific to edn.
 
 [serde-rs/serde]: https://github.com/serde-rs/serde
 
@@ -44,14 +44,14 @@ The test suite requires a nightly compiler.
 cargo clean && cargo update && cargo build
 ```
 
-##### In the top level serde-json directory
+##### In the top level serde-edn directory
 
 ```sh
 # Run the full test suite, including doc test and compile-tests
 cargo test
 ```
 
-[`tests/deps`]: https://github.com/serde-rs/json/tree/master/tests/deps
+[`tests/deps`]: https://github.com/serde-rs/edn/tree/master/tests/deps
 
 ## Conduct
 

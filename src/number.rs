@@ -26,9 +26,9 @@ use error::ErrorCode;
 #[cfg(feature = "arbitrary_precision")]
 /// Not public API. Should be pub(crate).
 #[doc(hidden)]
-pub const TOKEN: &'static str = "$serde_json::private::Number";
+pub const TOKEN: &'static str = "$serde_edn::private::Number";
 
-/// Represents a JSON number, whether integer or floating point.
+/// Represents a edn number, whether integer or floating point.
 #[derive(Clone, PartialEq)]
 pub struct Number {
     n: N,
@@ -56,11 +56,11 @@ impl Number {
     ///
     /// ```rust
     /// # #[macro_use]
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
     /// let big = i64::max_value() as u64 + 10;
-    /// let v = json!({ "a": 64, "b": big, "c": 256.0 });
+    /// let v = edn!({ "a": 64, "b": big, "c": 256.0 });
     ///
     /// assert!(v["a"].is_i64());
     ///
@@ -90,10 +90,10 @@ impl Number {
     ///
     /// ```rust
     /// # #[macro_use]
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// let v = json!({ "a": 64, "b": -64, "c": 256.0 });
+    /// let v = edn!({ "a": 64, "b": -64, "c": 256.0 });
     ///
     /// assert!(v["a"].is_u64());
     ///
@@ -125,10 +125,10 @@ impl Number {
     ///
     /// ```rust
     /// # #[macro_use]
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// let v = json!({ "a": 256.0, "b": 64, "c": -64 });
+    /// let v = edn!({ "a": 256.0, "b": 64, "c": -64 });
     ///
     /// assert!(v["a"].is_f64());
     ///
@@ -160,11 +160,11 @@ impl Number {
     ///
     /// ```rust
     /// # #[macro_use]
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
     /// let big = i64::max_value() as u64 + 10;
-    /// let v = json!({ "a": 64, "b": big, "c": 256.0 });
+    /// let v = edn!({ "a": 64, "b": big, "c": 256.0 });
     ///
     /// assert_eq!(v["a"].as_i64(), Some(64));
     /// assert_eq!(v["b"].as_i64(), None);
@@ -194,10 +194,10 @@ impl Number {
     ///
     /// ```rust
     /// # #[macro_use]
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// let v = json!({ "a": 64, "b": -64, "c": 256.0 });
+    /// let v = edn!({ "a": 64, "b": -64, "c": 256.0 });
     ///
     /// assert_eq!(v["a"].as_u64(), Some(64));
     /// assert_eq!(v["b"].as_u64(), None);
@@ -219,10 +219,10 @@ impl Number {
     ///
     /// ```rust
     /// # #[macro_use]
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// let v = json!({ "a": 256.0, "b": 64, "c": -64 });
+    /// let v = edn!({ "a": 256.0, "b": 64, "c": -64 });
     ///
     /// assert_eq!(v["a"].as_f64(), Some(256.0));
     /// assert_eq!(v["b"].as_f64(), Some(64.0));
@@ -241,13 +241,13 @@ impl Number {
         self.n.parse().ok()
     }
 
-    /// Converts a finite `f64` to a `Number`. Infinite or NaN values are not JSON
+    /// Converts a finite `f64` to a `Number`. Infinite or NaN values are not edn
     /// numbers.
     ///
     /// ```rust
     /// # use std::f64;
     /// #
-    /// # use serde_json::Number;
+    /// # use serde_edn::Number;
     /// #
     /// assert!(Number::from_f64(256.0).is_some());
     ///
@@ -361,7 +361,7 @@ impl<'de> Deserialize<'de> for Number {
             type Value = Number;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter.write_str("a JSON number")
+                formatter.write_str("a edn number")
             }
 
             #[inline]
@@ -379,7 +379,7 @@ impl<'de> Deserialize<'de> for Number {
             where
                 E: de::Error,
             {
-                Number::from_f64(value).ok_or_else(|| de::Error::custom("not a JSON number"))
+                Number::from_f64(value).ok_or_else(|| de::Error::custom("not a edn number"))
             }
 
             #[cfg(feature = "arbitrary_precision")]

@@ -6,7 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Serialize a Rust data structure into JSON data.
+//! Serialize a Rust data structure into edn data.
 
 use std::fmt;
 use std::io;
@@ -19,7 +19,7 @@ use serde::ser::{self, Impossible, Serialize};
 use itoa;
 use ryu;
 
-/// A structure for serializing Rust values into JSON.
+/// A structure for serializing Rust values into edn.
 pub struct Serializer<W, F = CompactFormatter> {
     writer: W,
     formatter: F,
@@ -29,7 +29,7 @@ impl<W> Serializer<W>
 where
     W: io::Write,
 {
-    /// Creates a new JSON serializer.
+    /// Creates a new edn serializer.
     #[inline]
     pub fn new(writer: W) -> Self {
         Serializer::with_formatter(writer, CompactFormatter)
@@ -40,7 +40,7 @@ impl<'a, W> Serializer<W, PrettyFormatter<'a>>
 where
     W: io::Write,
 {
-    /// Creates a new JSON pretty print serializer.
+    /// Creates a new edn pretty print serializer.
     #[inline]
     pub fn pretty(writer: W) -> Self {
         Serializer::with_formatter(writer, PrettyFormatter::new())
@@ -52,7 +52,7 @@ where
     W: io::Write,
     F: Formatter,
 {
-    /// Creates a new JSON visitor whose output will be written to the writer
+    /// Creates a new edn visitor whose output will be written to the writer
     /// specified.
     #[inline]
     pub fn with_formatter(writer: W, formatter: F) -> Self {
@@ -1590,8 +1590,8 @@ impl CharEscape {
     }
 }
 
-/// This trait abstracts away serializing the JSON control characters, which allows the user to
-/// optionally pretty print the JSON output.
+/// This trait abstracts away serializing the edn control characters, which allows the user to
+/// optionally pretty print the edn output.
 pub trait Formatter {
     /// Writes a `null` value to the specified writer.
     #[inline]
@@ -1894,7 +1894,7 @@ pub trait Formatter {
         Ok(())
     }
 
-    /// Writes a raw JSON fragment that doesn't need any escaping to the
+    /// Writes a raw edn fragment that doesn't need any escaping to the
     /// specified writer.
     #[inline]
     fn write_raw_fragment<W: ?Sized>(&mut self, writer: &mut W, fragment: &str) -> io::Result<()>
@@ -1905,13 +1905,13 @@ pub trait Formatter {
     }
 }
 
-/// This structure compacts a JSON value with no extra whitespace.
+/// This structure compacts a edn value with no extra whitespace.
 #[derive(Clone, Debug)]
 pub struct CompactFormatter;
 
 impl Formatter for CompactFormatter {}
 
-/// This structure pretty prints a JSON value to make it human readable.
+/// This structure pretty prints a edn value to make it human readable.
 #[derive(Clone, Debug)]
 pub struct PrettyFormatter<'a> {
     current_indent: usize,
@@ -2108,7 +2108,7 @@ const UU: u8 = b'u'; // \x00...\x1F except the ones above
 const __: u8 = 0;
 
 // Lookup table of escape sequences. A value of b'x' at index i means that byte
-// i is escaped as "\x" in JSON. A value of 0 means that byte i is not escaped.
+// i is escaped as "\x" in edn. A value of 0 means that byte i is not escaped.
 static ESCAPE: [u8; 256] = [
     //   1   2   3   4   5   6   7   8   9   A   B   C   D   E   F
     UU, UU, UU, UU, UU, UU, UU, UU, BB, TT, NN, UU, FF, RR, UU, UU, // 0
@@ -2129,7 +2129,7 @@ static ESCAPE: [u8; 256] = [
     __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // F
 ];
 
-/// Serialize the given data structure as JSON into the IO stream.
+/// Serialize the given data structure as edn into the IO stream.
 ///
 /// # Errors
 ///
@@ -2146,7 +2146,7 @@ where
     Ok(())
 }
 
-/// Serialize the given data structure as pretty-printed JSON into the IO
+/// Serialize the given data structure as pretty-printed edn into the IO
 /// stream.
 ///
 /// # Errors
@@ -2164,7 +2164,7 @@ where
     Ok(())
 }
 
-/// Serialize the given data structure as a JSON byte vector.
+/// Serialize the given data structure as a edn byte vector.
 ///
 /// # Errors
 ///
@@ -2180,7 +2180,7 @@ where
     Ok(writer)
 }
 
-/// Serialize the given data structure as a pretty-printed JSON byte vector.
+/// Serialize the given data structure as a pretty-printed edn byte vector.
 ///
 /// # Errors
 ///
@@ -2196,7 +2196,7 @@ where
     Ok(writer)
 }
 
-/// Serialize the given data structure as a String of JSON.
+/// Serialize the given data structure as a String of edn.
 ///
 /// # Errors
 ///
@@ -2215,7 +2215,7 @@ where
     Ok(string)
 }
 
-/// Serialize the given data structure as a pretty-printed String of JSON.
+/// Serialize the given data structure as a pretty-printed String of edn.
 ///
 /// # Errors
 ///

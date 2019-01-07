@@ -24,7 +24,7 @@ use raw::{BorrowedRawDeserializer, OwnedRawDeserializer};
 /// stable we can use actual specialization.
 ///
 /// This trait is sealed and cannot be implemented for types outside of
-/// `serde_json`.
+/// `serde_edn`.
 pub trait Read<'de>: private::Sealed {
     #[doc(hidden)]
     fn next(&mut self) -> Result<Option<u8>>;
@@ -60,13 +60,13 @@ pub trait Read<'de>: private::Sealed {
     #[doc(hidden)]
     fn byte_offset(&self) -> usize;
 
-    /// Assumes the previous byte was a quotation mark. Parses a JSON-escaped
+    /// Assumes the previous byte was a quotation mark. Parses a edn-escaped
     /// string until the next quotation mark using the given scratch space if
     /// necessary. The scratch space is initially empty.
     #[doc(hidden)]
     fn parse_str<'s>(&'s mut self, scratch: &'s mut Vec<u8>) -> Result<Reference<'de, 's, str>>;
 
-    /// Assumes the previous byte was a quotation mark. Parses a JSON-escaped
+    /// Assumes the previous byte was a quotation mark. Parses a edn-escaped
     /// string until the next quotation mark using the given scratch space if
     /// necessary. The scratch space is initially empty.
     ///
@@ -78,7 +78,7 @@ pub trait Read<'de>: private::Sealed {
         scratch: &'s mut Vec<u8>,
     ) -> Result<Reference<'de, 's, [u8]>>;
 
-    /// Assumes the previous byte was a quotation mark. Parses a JSON-escaped
+    /// Assumes the previous byte was a quotation mark. Parses a edn-escaped
     /// string until the next quotation mark but discards the data.
     #[doc(hidden)]
     fn ignore_str(&mut self) -> Result<()>;
@@ -125,7 +125,7 @@ impl<'b, 'c, T: ?Sized + 'static> Deref for Reference<'b, 'c, T> {
     }
 }
 
-/// JSON input source that reads from a std::io input stream.
+/// edn input source that reads from a std::io input stream.
 pub struct IoRead<R>
 where
     R: io::Read,
@@ -137,7 +137,7 @@ where
     raw_buffer: Option<Vec<u8>>,
 }
 
-/// JSON input source that reads from a slice of bytes.
+/// edn input source that reads from a slice of bytes.
 //
 // This is more efficient than other iterators because peek() can be read-only
 // and we can compute line/col position only if an error happens.
@@ -149,7 +149,7 @@ pub struct SliceRead<'a> {
     raw_buffering_start_index: usize,
 }
 
-/// JSON input source that reads from a UTF-8 string.
+/// edn input source that reads from a UTF-8 string.
 //
 // Able to elide UTF-8 checks by assuming that the input is valid UTF-8.
 pub struct StrRead<'a> {
@@ -169,7 +169,7 @@ impl<R> IoRead<R>
 where
     R: io::Read,
 {
-    /// Create a JSON input source to read from a std::io input stream.
+    /// Create a edn input source to read from a std::io input stream.
     pub fn new(reader: R) -> Self {
         #[cfg(not(feature = "raw_value"))]
         {
@@ -378,7 +378,7 @@ where
 //////////////////////////////////////////////////////////////////////////////
 
 impl<'a> SliceRead<'a> {
-    /// Create a JSON input source to read from a slice of bytes.
+    /// Create a edn input source to read from a slice of bytes.
     pub fn new(slice: &'a [u8]) -> Self {
         #[cfg(not(feature = "raw_value"))]
         {
@@ -414,7 +414,7 @@ impl<'a> SliceRead<'a> {
     }
 
     /// The big optimization here over IoRead is that if the string contains no
-    /// backslash escape sequences, the returned &str is a slice of the raw JSON
+    /// backslash escape sequences, the returned &str is a slice of the raw edn
     /// data so we avoid copying into the scratch space.
     fn parse_str_bytes<'s, T: ?Sized, F>(
         &'s mut self,
@@ -439,7 +439,7 @@ impl<'a> SliceRead<'a> {
             match self.slice[self.index] {
                 b'"' => {
                     if scratch.is_empty() {
-                        // Fast path: return a slice of the raw JSON without any
+                        // Fast path: return a slice of the raw edn without any
                         // copying.
                         let borrowed = &self.slice[start..self.index];
                         self.index += 1;
@@ -589,7 +589,7 @@ impl<'a> Read<'a> for SliceRead<'a> {
 //////////////////////////////////////////////////////////////////////////////
 
 impl<'a> StrRead<'a> {
-    /// Create a JSON input source to read from a UTF-8 string.
+    /// Create a edn input source to read from a UTF-8 string.
     pub fn new(s: &'a str) -> Self {
         #[cfg(not(feature = "raw_value"))]
         {
@@ -723,7 +723,7 @@ fn as_str<'de, 's, R: Read<'de>>(read: &R, slice: &'s [u8]) -> Result<&'s str> {
     str::from_utf8(slice).or_else(|_| error(read, ErrorCode::InvalidUnicodeCodePoint))
 }
 
-/// Parses a JSON escape sequence and appends it into the scratch space. Assumes
+/// Parses a edn escape sequence and appends it into the scratch space. Assumes
 /// the previous byte read was a backslash.
 fn parse_escape<'de, R: Read<'de>>(read: &mut R, scratch: &mut Vec<u8>) -> Result<()> {
     let ch = try!(next_or_eof(read));
@@ -787,7 +787,7 @@ fn parse_escape<'de, R: Read<'de>>(read: &mut R, scratch: &mut Vec<u8>) -> Resul
     Ok(())
 }
 
-/// Parses a JSON escape sequence and discards the value. Assumes the previous
+/// Parses a edn escape sequence and discards the value. Assumes the previous
 /// byte read was a backslash.
 fn ignore_escape<'de, R: ?Sized + Read<'de>>(read: &mut R) -> Result<()> {
     let ch = try!(next_or_eof(read));

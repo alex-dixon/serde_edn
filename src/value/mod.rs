@@ -6,21 +6,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! The Value enum, a loosely typed way of representing any valid JSON value.
+//! The Value enum, a loosely typed way of representing any valid edn value.
 //!
-//! # Constructing JSON
+//! # Constructing edn
 //!
-//! Serde JSON provides a [`json!` macro][macro] to build `serde_json::Value`
-//! objects with very natural JSON syntax. In order to use this macro,
-//! `serde_json` needs to be imported with the `#[macro_use]` attribute.
+//! Serde edn provides a [`edn!` macro][macro] to build `serde_edn::Value`
+//! objects with very natural edn syntax. In order to use this macro,
+//! `serde_edn` needs to be imported with the `#[macro_use]` attribute.
 //!
 //! ```rust
 //! #[macro_use]
-//! extern crate serde_json;
+//! extern crate serde_edn;
 //!
 //! fn main() {
-//!     // The type of `john` is `serde_json::Value`
-//!     let john = json!({
+//!     // The type of `john` is `serde_edn::Value`
+//!     let john = edn!({
 //!       "name": "John Doe",
 //!       "age": 43,
 //!       "phones": [
@@ -31,22 +31,22 @@
 //!
 //!     println!("first phone number: {}", john["phones"][0]);
 //!
-//!     // Convert to a string of JSON and print it out
+//!     // Convert to a string of edn and print it out
 //!     println!("{}", john.to_string());
 //! }
 //! ```
 //!
-//! The `Value::to_string()` function converts a `serde_json::Value` into a
-//! `String` of JSON text.
+//! The `Value::to_string()` function converts a `serde_edn::Value` into a
+//! `String` of edn text.
 //!
-//! One neat thing about the `json!` macro is that variables and expressions can
-//! be interpolated directly into the JSON value as you are building it. Serde
+//! One neat thing about the `edn!` macro is that variables and expressions can
+//! be interpolated directly into the edn value as you are building it. Serde
 //! will check at compile time that the value you are interpolating is able to
-//! be represented as JSON.
+//! be represented as edn.
 //!
 //! ```rust
 //! # #[macro_use]
-//! # extern crate serde_json;
+//! # extern crate serde_edn;
 //! #
 //! # fn random_phone() -> u16 { 0 }
 //! #
@@ -54,8 +54,8 @@
 //! let full_name = "John Doe";
 //! let age_last_year = 42;
 //!
-//! // The type of `john` is `serde_json::Value`
-//! let john = json!({
+//! // The type of `john` is `serde_edn::Value`
+//! let john = edn!({
 //!   "name": full_name,
 //!   "age": age_last_year + 1,
 //!   "phones": [
@@ -66,19 +66,19 @@
 //! # }
 //! ```
 //!
-//! A string of JSON data can be parsed into a `serde_json::Value` by the
-//! [`serde_json::from_str`][from_str] function. There is also
+//! A string of edn data can be parsed into a `serde_edn::Value` by the
+//! [`serde_edn::from_str`][from_str] function. There is also
 //! [`from_slice`][from_slice] for parsing from a byte slice `&[u8]` and
 //! [`from_reader`][from_reader] for parsing from any `io::Read` like a File or
 //! a TCP stream.
 //!
 //! ```rust
-//! extern crate serde_json;
+//! extern crate serde_edn;
 //!
-//! use serde_json::{Value, Error};
+//! use serde_edn::{Value, Error};
 //!
 //! fn untyped_example() -> Result<(), Error> {
-//!     // Some JSON input data as a &str. Maybe this comes from the user.
+//!     // Some edn input data as a &str. Maybe this comes from the user.
 //!     let data = r#"{
 //!                     "name": "John Doe",
 //!                     "age": 43,
@@ -88,8 +88,8 @@
 //!                     ]
 //!                   }"#;
 //!
-//!     // Parse the string of data into serde_json::Value.
-//!     let v: Value = serde_json::from_str(data)?;
+//!     // Parse the string of data into serde_edn::Value.
+//!     let v: Value = serde_edn::from_str(data)?;
 //!
 //!     // Access parts of the data by indexing with square brackets.
 //!     println!("Please call {} at the number {}", v["name"], v["phones"][0]);
@@ -102,10 +102,10 @@
 //! # }
 //! ```
 //!
-//! [macro]: https://docs.serde.rs/serde_json/macro.json.html
-//! [from_str]: https://docs.serde.rs/serde_json/de/fn.from_str.html
-//! [from_slice]: https://docs.serde.rs/serde_json/de/fn.from_slice.html
-//! [from_reader]: https://docs.serde.rs/serde_json/de/fn.from_reader.html
+//! [macro]: https://docs.serde.rs/serde_edn/macro.edn.html
+//! [from_str]: https://docs.serde.rs/serde_edn/de/fn.from_str.html
+//! [from_slice]: https://docs.serde.rs/serde_edn/de/fn.from_slice.html
+//! [from_reader]: https://docs.serde.rs/serde_edn/de/fn.from_reader.html
 
 use std::fmt::{self, Debug};
 use std::io;
@@ -126,85 +126,85 @@ pub use self::index::Index;
 
 use self::ser::Serializer;
 
-/// Represents any valid JSON value.
+/// Represents any valid edn value.
 ///
-/// See the `serde_json::value` module documentation for usage examples.
+/// See the `serde_edn::value` module documentation for usage examples.
 #[derive(Clone, PartialEq)]
 pub enum Value {
-    /// Represents a JSON null value.
+    /// Represents a edn null value.
     ///
     /// ```rust
     /// # #[macro_use]
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// let v = json!(null);
+    /// let v = edn!(null);
     /// # }
     /// ```
     Null,
 
-    /// Represents a JSON boolean.
+    /// Represents a edn boolean.
     ///
     /// ```rust
     /// # #[macro_use]
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// let v = json!(true);
+    /// let v = edn!(true);
     /// # }
     /// ```
     Bool(bool),
 
-    /// Represents a JSON number, whether integer or floating point.
+    /// Represents a edn number, whether integer or floating point.
     ///
     /// ```rust
     /// # #[macro_use]
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// let v = json!(12.5);
+    /// let v = edn!(12.5);
     /// # }
     /// ```
     Number(Number),
 
-    /// Represents a JSON string.
+    /// Represents a edn string.
     ///
     /// ```rust
     /// # #[macro_use]
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// let v = json!("a string");
+    /// let v = edn!("a string");
     /// # }
     /// ```
     String(String),
 
-    /// Represents a JSON array.
+    /// Represents a edn array.
     ///
     /// ```rust
     /// # #[macro_use]
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// let v = json!(["an", "array"]);
+    /// let v = edn!(["an", "array"]);
     /// # }
     /// ```
     Array(Vec<Value>),
 
-    /// Represents a JSON object.
+    /// Represents a edn object.
     ///
     /// By default the map is backed by a BTreeMap. Enable the `preserve_order`
-    /// feature of serde_json to use IndexMap instead, which preserves
+    /// feature of serde_edn to use IndexMap instead, which preserves
     /// entries in the order they are inserted into the map. In particular, this
-    /// allows JSON data to be deserialized into a Value and serialized to a
+    /// allows edn data to be deserialized into a Value and serialized to a
     /// string while retaining the order of map keys in the input.
     ///
     /// ```rust
     /// # #[macro_use]
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// let v = json!({ "an": "object" });
+    /// let v = edn!({ "an": "object" });
     /// # }
     /// ```
     Object(Map<String, Value>),
@@ -245,19 +245,19 @@ impl<'a, 'b> io::Write for WriterFormatter<'a, 'b> {
 }
 
 impl fmt::Display for Value {
-    /// Display a JSON value as a string.
+    /// Display a edn value as a string.
     ///
     /// ```rust
     /// # #[macro_use]
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// let json = json!({ "city": "London", "street": "10 Downing Street" });
+    /// let edn = edn!({ "city": "London", "street": "10 Downing Street" });
     ///
     /// // Compact format:
     /// //
     /// // {"city":"London","street":"10 Downing Street"}
-    /// let compact = format!("{}", json);
+    /// let compact = format!("{}", edn);
     /// assert_eq!(compact,
     ///     "{\"city\":\"London\",\"street\":\"10 Downing Street\"}");
     ///
@@ -267,7 +267,7 @@ impl fmt::Display for Value {
     /// //   "city": "London",
     /// //   "street": "10 Downing Street"
     /// // }
-    /// let pretty = format!("{:#}", json);
+    /// let pretty = format!("{:#}", edn);
     /// assert_eq!(pretty,
     ///     "{\n  \"city\": \"London\",\n  \"street\": \"10 Downing Street\"\n}");
     /// # }
@@ -293,7 +293,7 @@ fn parse_index(s: &str) -> Option<usize> {
 }
 
 impl Value {
-    /// Index into a JSON array or map. A string index can be used to access a
+    /// Index into a edn array or map. A string index can be used to access a
     /// value in a map, and a usize index can be used to access an element of an
     /// array.
     ///
@@ -304,14 +304,14 @@ impl Value {
     ///
     /// ```rust
     /// # #[macro_use]
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// let object = json!({ "A": 65, "B": 66, "C": 67 });
-    /// assert_eq!(*object.get("A").unwrap(), json!(65));
+    /// let object = edn!({ "A": 65, "B": 66, "C": 67 });
+    /// assert_eq!(*object.get("A").unwrap(), edn!(65));
     ///
-    /// let array = json!([ "A", "B", "C" ]);
-    /// assert_eq!(*array.get(2).unwrap(), json!("C"));
+    /// let array = edn!([ "A", "B", "C" ]);
+    /// assert_eq!(*array.get(2).unwrap(), edn!("C"));
     ///
     /// assert_eq!(array.get("A"), None);
     /// # }
@@ -323,25 +323,25 @@ impl Value {
     ///
     /// ```rust
     /// # #[macro_use]
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// let object = json!({
+    /// let object = edn!({
     ///     "A": ["a", "á", "à"],
     ///     "B": ["b", "b́"],
     ///     "C": ["c", "ć", "ć̣", "ḉ"],
     /// });
-    /// assert_eq!(object["B"][0], json!("b"));
+    /// assert_eq!(object["B"][0], edn!("b"));
     ///
-    /// assert_eq!(object["D"], json!(null));
-    /// assert_eq!(object[0]["x"]["y"]["z"], json!(null));
+    /// assert_eq!(object["D"], edn!(null));
+    /// assert_eq!(object[0]["x"]["y"]["z"], edn!(null));
     /// # }
     /// ```
     pub fn get<I: Index>(&self, index: I) -> Option<&Value> {
         index.index_into(self)
     }
 
-    /// Mutably index into a JSON array or map. A string index can be used to
+    /// Mutably index into a edn array or map. A string index can be used to
     /// access a value in a map, and a usize index can be used to access an
     /// element of an array.
     ///
@@ -352,14 +352,14 @@ impl Value {
     ///
     /// ```rust
     /// # #[macro_use]
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// let mut object = json!({ "A": 65, "B": 66, "C": 67 });
-    /// *object.get_mut("A").unwrap() = json!(69);
+    /// let mut object = edn!({ "A": 65, "B": 66, "C": 67 });
+    /// *object.get_mut("A").unwrap() = edn!(69);
     ///
-    /// let mut array = json!([ "A", "B", "C" ]);
-    /// *array.get_mut(2).unwrap() = json!("D");
+    /// let mut array = edn!([ "A", "B", "C" ]);
+    /// *array.get_mut(2).unwrap() = edn!("D");
     /// # }
     /// ```
     pub fn get_mut<I: Index>(&mut self, index: I) -> Option<&mut Value> {
@@ -374,10 +374,10 @@ impl Value {
     ///
     /// ```rust
     /// # #[macro_use]
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// let obj = json!({ "a": { "nested": true }, "b": ["an", "array"] });
+    /// let obj = edn!({ "a": { "nested": true }, "b": ["an", "array"] });
     ///
     /// assert!(obj.is_object());
     /// assert!(obj["a"].is_object());
@@ -395,10 +395,10 @@ impl Value {
     ///
     /// ```rust
     /// # #[macro_use]
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// let v = json!({ "a": { "nested": true }, "b": ["an", "array"] });
+    /// let v = edn!({ "a": { "nested": true }, "b": ["an", "array"] });
     ///
     /// // The length of `{"nested": true}` is 1 entry.
     /// assert_eq!(v["a"].as_object().unwrap().len(), 1);
@@ -419,13 +419,13 @@ impl Value {
     ///
     /// ```rust
     /// # #[macro_use]
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// let mut v = json!({ "a": { "nested": true } });
+    /// let mut v = edn!({ "a": { "nested": true } });
     ///
     /// v["a"].as_object_mut().unwrap().clear();
-    /// assert_eq!(v, json!({ "a": {} }));
+    /// assert_eq!(v, edn!({ "a": {} }));
     /// # }
     ///
     /// ```
@@ -444,10 +444,10 @@ impl Value {
     ///
     /// ```rust
     /// # #[macro_use]
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// let obj = json!({ "a": ["an", "array"], "b": { "an": "object" } });
+    /// let obj = edn!({ "a": ["an", "array"], "b": { "an": "object" } });
     ///
     /// assert!(obj["a"].is_array());
     ///
@@ -464,10 +464,10 @@ impl Value {
     ///
     /// ```rust
     /// # #[macro_use]
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// let v = json!({ "a": ["an", "array"], "b": { "an": "object" } });
+    /// let v = edn!({ "a": ["an", "array"], "b": { "an": "object" } });
     ///
     /// // The length of `["an", "array"]` is 2 elements.
     /// assert_eq!(v["a"].as_array().unwrap().len(), 2);
@@ -488,13 +488,13 @@ impl Value {
     ///
     /// ```rust
     /// # #[macro_use]
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// let mut v = json!({ "a": ["an", "array"] });
+    /// let mut v = edn!({ "a": ["an", "array"] });
     ///
     /// v["a"].as_array_mut().unwrap().clear();
-    /// assert_eq!(v, json!({ "a": [] }));
+    /// assert_eq!(v, edn!({ "a": [] }));
     /// # }
     /// ```
     pub fn as_array_mut(&mut self) -> Option<&mut Vec<Value>> {
@@ -511,10 +511,10 @@ impl Value {
     ///
     /// ```rust
     /// # #[macro_use]
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// let v = json!({ "a": "some string", "b": false });
+    /// let v = edn!({ "a": "some string", "b": false });
     ///
     /// assert!(v["a"].is_string());
     ///
@@ -531,17 +531,17 @@ impl Value {
     ///
     /// ```rust
     /// # #[macro_use]
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// let v = json!({ "a": "some string", "b": false });
+    /// let v = edn!({ "a": "some string", "b": false });
     ///
     /// assert_eq!(v["a"].as_str(), Some("some string"));
     ///
     /// // The boolean `false` is not a string.
     /// assert_eq!(v["b"].as_str(), None);
     ///
-    /// // JSON values are printed in JSON representation, so strings are in quotes.
+    /// // edn values are printed in edn representation, so strings are in quotes.
     /// //
     /// //    The value is: "some string"
     /// println!("The value is: {}", v["a"]);
@@ -563,10 +563,10 @@ impl Value {
     ///
     /// ```rust
     /// # #[macro_use]
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// let v = json!({ "a": 1, "b": "2" });
+    /// let v = edn!({ "a": 1, "b": "2" });
     ///
     /// assert!(v["a"].is_number());
     ///
@@ -589,11 +589,11 @@ impl Value {
     ///
     /// ```rust
     /// # #[macro_use]
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
     /// let big = i64::max_value() as u64 + 10;
-    /// let v = json!({ "a": 64, "b": big, "c": 256.0 });
+    /// let v = edn!({ "a": 64, "b": big, "c": 256.0 });
     ///
     /// assert!(v["a"].is_i64());
     ///
@@ -618,10 +618,10 @@ impl Value {
     ///
     /// ```rust
     /// # #[macro_use]
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// let v = json!({ "a": 64, "b": -64, "c": 256.0 });
+    /// let v = edn!({ "a": 64, "b": -64, "c": 256.0 });
     ///
     /// assert!(v["a"].is_u64());
     ///
@@ -649,10 +649,10 @@ impl Value {
     ///
     /// ```rust
     /// # #[macro_use]
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// let v = json!({ "a": 256.0, "b": 64, "c": -64 });
+    /// let v = edn!({ "a": 256.0, "b": 64, "c": -64 });
     ///
     /// assert!(v["a"].is_f64());
     ///
@@ -673,11 +673,11 @@ impl Value {
     ///
     /// ```rust
     /// # #[macro_use]
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
     /// let big = i64::max_value() as u64 + 10;
-    /// let v = json!({ "a": 64, "b": big, "c": 256.0 });
+    /// let v = edn!({ "a": 64, "b": big, "c": 256.0 });
     ///
     /// assert_eq!(v["a"].as_i64(), Some(64));
     /// assert_eq!(v["b"].as_i64(), None);
@@ -696,10 +696,10 @@ impl Value {
     ///
     /// ```rust
     /// # #[macro_use]
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// let v = json!({ "a": 64, "b": -64, "c": 256.0 });
+    /// let v = edn!({ "a": 64, "b": -64, "c": 256.0 });
     ///
     /// assert_eq!(v["a"].as_u64(), Some(64));
     /// assert_eq!(v["b"].as_u64(), None);
@@ -718,10 +718,10 @@ impl Value {
     ///
     /// ```rust
     /// # #[macro_use]
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// let v = json!({ "a": 256.0, "b": 64, "c": -64 });
+    /// let v = edn!({ "a": 256.0, "b": 64, "c": -64 });
     ///
     /// assert_eq!(v["a"].as_f64(), Some(256.0));
     /// assert_eq!(v["b"].as_f64(), Some(64.0));
@@ -742,10 +742,10 @@ impl Value {
     ///
     /// ```rust
     /// # #[macro_use]
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// let v = json!({ "a": false, "b": "false" });
+    /// let v = edn!({ "a": false, "b": "false" });
     ///
     /// assert!(v["a"].is_boolean());
     ///
@@ -762,10 +762,10 @@ impl Value {
     ///
     /// ```rust
     /// # #[macro_use]
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// let v = json!({ "a": false, "b": "false" });
+    /// let v = edn!({ "a": false, "b": "false" });
     ///
     /// assert_eq!(v["a"].as_bool(), Some(false));
     ///
@@ -787,10 +787,10 @@ impl Value {
     ///
     /// ```rust
     /// # #[macro_use]
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// let v = json!({ "a": null, "b": false });
+    /// let v = edn!({ "a": null, "b": false });
     ///
     /// assert!(v["a"].is_null());
     ///
@@ -806,10 +806,10 @@ impl Value {
     ///
     /// ```rust
     /// # #[macro_use]
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// let v = json!({ "a": null, "b": false });
+    /// let v = edn!({ "a": null, "b": false });
     ///
     /// assert_eq!(v["a"].as_null(), Some(()));
     ///
@@ -824,10 +824,10 @@ impl Value {
         }
     }
 
-    /// Looks up a value by a JSON Pointer.
+    /// Looks up a value by a edn Pointer.
     ///
-    /// JSON Pointer defines a string syntax for identifying a specific value
-    /// within a JavaScript Object Notation (JSON) document.
+    /// edn Pointer defines a string syntax for identifying a specific value
+    /// within a JavaScript Object Notation (edn) document.
     ///
     /// A Pointer is a Unicode string with the reference tokens separated by `/`.
     /// Inside tokens `/` is replaced by `~1` and `~` is replaced by `~0`. The
@@ -840,16 +840,16 @@ impl Value {
     ///
     /// ```rust
     /// # #[macro_use]
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// let data = json!({
+    /// let data = edn!({
     ///     "x": {
     ///         "y": ["z", "zz"]
     ///     }
     /// });
     ///
-    /// assert_eq!(data.pointer("/x/y/1").unwrap(), &json!("zz"));
+    /// assert_eq!(data.pointer("/x/y/1").unwrap(), &edn!("zz"));
     /// assert_eq!(data.pointer("/a/b/c"), None);
     /// # }
     /// ```
@@ -881,11 +881,11 @@ impl Value {
         Some(target)
     }
 
-    /// Looks up a value by a JSON Pointer and returns a mutable reference to
+    /// Looks up a value by a edn Pointer and returns a mutable reference to
     /// that value.
     ///
-    /// JSON Pointer defines a string syntax for identifying a specific value
-    /// within a JavaScript Object Notation (JSON) document.
+    /// edn Pointer defines a string syntax for identifying a specific value
+    /// within a JavaScript Object Notation (edn) document.
     ///
     /// A Pointer is a Unicode string with the reference tokens separated by `/`.
     /// Inside tokens `/` is replaced by `~1` and `~` is replaced by `~0`. The
@@ -897,13 +897,13 @@ impl Value {
     /// # Example of Use
     ///
     /// ```rust
-    /// extern crate serde_json;
+    /// extern crate serde_edn;
     ///
-    /// use serde_json::Value;
+    /// use serde_edn::Value;
     ///
     /// fn main() {
     ///     let s = r#"{"x": 1.0, "y": 2.0}"#;
-    ///     let mut value: Value = serde_json::from_str(s).unwrap();
+    ///     let mut value: Value = serde_edn::from_str(s).unwrap();
     ///
     ///     // Check value using read-only pointer
     ///     assert_eq!(value.pointer("/x"), Some(&1.0.into()));
@@ -955,12 +955,12 @@ impl Value {
     ///
     /// ```rust
     /// # #[macro_use]
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// let mut v = json!({ "x": "y" });
-    /// assert_eq!(v["x"].take(), json!("y"));
-    /// assert_eq!(v, json!({ "x": null }));
+    /// let mut v = edn!({ "x": "y" });
+    /// assert_eq!(v["x"].take(), edn!("y"));
+    /// assert_eq!(v, edn!({ "x": null }));
     /// # }
     /// ```
     pub fn take(&mut self) -> Value {
@@ -978,9 +978,9 @@ impl Value {
 /// # #[macro_use]
 /// # extern crate serde_derive;
 /// #
-/// # extern crate serde_json;
+/// # extern crate serde_edn;
 /// #
-/// use serde_json::Value;
+/// use serde_edn::Value;
 ///
 /// #[derive(Deserialize)]
 /// struct Settings {
@@ -989,9 +989,9 @@ impl Value {
 ///     extras: Value,
 /// }
 ///
-/// # fn try_main() -> Result<(), serde_json::Error> {
+/// # fn try_main() -> Result<(), serde_edn::Error> {
 /// let data = r#" { "level": 42 } "#;
-/// let s: Settings = serde_json::from_str(data)?;
+/// let s: Settings = serde_edn::from_str(data)?;
 ///
 /// assert_eq!(s.level, 42);
 /// assert_eq!(s.extras, Value::Null);
@@ -1015,8 +1015,8 @@ mod index;
 mod partial_eq;
 mod ser;
 
-/// Convert a `T` into `serde_json::Value` which is an enum that can represent
-/// any valid JSON data.
+/// Convert a `T` into `serde_edn::Value` which is an enum that can represent
+/// any valid edn data.
 ///
 /// # Example
 ///
@@ -1027,7 +1027,7 @@ mod ser;
 /// extern crate serde_derive;
 ///
 /// #[macro_use]
-/// extern crate serde_json;
+/// extern crate serde_edn;
 ///
 /// use std::error::Error;
 ///
@@ -1037,26 +1037,26 @@ mod ser;
 ///     location: String,
 /// }
 ///
-/// fn compare_json_values() -> Result<(), Box<Error>> {
+/// fn compare_edn_values() -> Result<(), Box<Error>> {
 ///     let u = User {
 ///         fingerprint: "0xF9BA143B95FF6D82".to_owned(),
 ///         location: "Menlo Park, CA".to_owned(),
 ///     };
 ///
-///     // The type of `expected` is `serde_json::Value`
-///     let expected = json!({
+///     // The type of `expected` is `serde_edn::Value`
+///     let expected = edn!({
 ///                            "fingerprint": "0xF9BA143B95FF6D82",
 ///                            "location": "Menlo Park, CA",
 ///                          });
 ///
-///     let v = serde_json::to_value(u).unwrap();
+///     let v = serde_edn::to_value(u).unwrap();
 ///     assert_eq!(v, expected);
 ///
 ///     Ok(())
 /// }
 /// #
 /// # fn main() {
-/// #     compare_json_values().unwrap();
+/// #     compare_edn_values().unwrap();
 /// # }
 /// ```
 ///
@@ -1066,7 +1066,7 @@ mod ser;
 /// fail, or if `T` contains a map with non-string keys.
 ///
 /// ```rust
-/// extern crate serde_json;
+/// extern crate serde_edn;
 ///
 /// use std::collections::BTreeMap;
 ///
@@ -1075,11 +1075,11 @@ mod ser;
 ///     let mut map = BTreeMap::new();
 ///     map.insert(vec![32, 64], "x86");
 ///
-///     println!("{}", serde_json::to_value(map).unwrap_err());
+///     println!("{}", serde_edn::to_value(map).unwrap_err());
 /// }
 /// ```
 // Taking by value is more friendly to iterator adapters, option and result
-// consumers, etc. See https://github.com/serde-rs/json/pull/149.
+// consumers, etc. See https://github.com/serde-rs/edn/pull/149.
 pub fn to_value<T>(value: T) -> Result<Value, Error>
 where
     T: Serialize,
@@ -1087,13 +1087,13 @@ where
     value.serialize(Serializer)
 }
 
-/// Interpret a `serde_json::Value` as an instance of type `T`.
+/// Interpret a `serde_edn::Value` as an instance of type `T`.
 ///
 /// # Example
 ///
 /// ```rust
 /// #[macro_use]
-/// extern crate serde_json;
+/// extern crate serde_edn;
 ///
 /// #[macro_use]
 /// extern crate serde_derive;
@@ -1107,13 +1107,13 @@ where
 /// }
 ///
 /// fn main() {
-///     // The type of `j` is `serde_json::Value`
-///     let j = json!({
+///     // The type of `j` is `serde_edn::Value`
+///     let j = edn!({
 ///                     "fingerprint": "0xF9BA143B95FF6D82",
 ///                     "location": "Menlo Park, CA"
 ///                   });
 ///
-///     let u: User = serde_json::from_value(j).unwrap();
+///     let u: User = serde_edn::from_value(j).unwrap();
 ///     println!("{:#?}", u);
 /// }
 /// ```
@@ -1122,10 +1122,10 @@ where
 ///
 /// This conversion can fail if the structure of the Value does not match the
 /// structure expected by `T`, for example if `T` is a struct type but the Value
-/// contains something other than a JSON map. It can also fail if the structure
+/// contains something other than a edn map. It can also fail if the structure
 /// is correct but `T`'s implementation of `Deserialize` decides that something
 /// is wrong with the data, for example required struct fields are missing from
-/// the JSON map or some number is too big to fit in the expected primitive
+/// the edn map or some number is too big to fit in the expected primitive
 /// type.
 pub fn from_value<T>(value: Value) -> Result<T, Error>
 where

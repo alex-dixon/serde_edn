@@ -10,7 +10,7 @@ use serde::ser::{Serialize, SerializeStruct, Serializer};
 
 use error::Error;
 
-/// Reference to a range of bytes encompassing a single valid JSON value in the
+/// Reference to a range of bytes encompassing a single valid edn value in the
 /// input data.
 ///
 /// A `RawValue` can be used to defer parsing parts of a payload until later,
@@ -25,9 +25,9 @@ use error::Error;
 /// ```
 /// #[macro_use]
 /// extern crate serde_derive;
-/// extern crate serde_json;
+/// extern crate serde_edn;
 ///
-/// use serde_json::{Result, value::RawValue};
+/// use serde_edn::{Result, value::RawValue};
 ///
 /// #[derive(Deserialize)]
 /// struct Input<'a> {
@@ -41,21 +41,21 @@ use error::Error;
 ///     info: (u32, &'a RawValue),
 /// }
 ///
-/// // Efficiently rearrange JSON input containing separate "code" and "payload"
+/// // Efficiently rearrange edn input containing separate "code" and "payload"
 /// // keys into a single "info" key holding an array of code and payload.
 /// //
-/// // This could be done equivalently using serde_json::Value as the type for
+/// // This could be done equivalently using serde_edn::Value as the type for
 /// // payload, but &RawValue will perform netter because it does not require
 /// // memory allocation. The correct range of bytes is borrowed from the input
 /// // data and pasted verbatim into the output.
 /// fn rearrange(input: &str) -> Result<String> {
-///     let input: Input = serde_json::from_str(input)?;
+///     let input: Input = serde_edn::from_str(input)?;
 ///
 ///     let output = Output {
 ///         info: (input.code, input.payload),
 ///     };
 ///
-///     serde_json::to_string(&output)
+///     serde_edn::to_string(&output)
 /// }
 ///
 /// fn main() -> Result<()> {
@@ -74,9 +74,9 @@ use error::Error;
 /// ```
 /// # #[macro_use]
 /// # extern crate serde_derive;
-/// # extern crate serde_json;
+/// # extern crate serde_edn;
 /// #
-/// # use serde_json::value::RawValue;
+/// # use serde_edn::value::RawValue;
 /// #
 /// #[derive(Deserialize)]
 /// struct SomeStruct<'a> {
@@ -88,23 +88,23 @@ use error::Error;
 /// ```
 ///
 /// The borrowed form is suitable when deserializing through
-/// [`serde_json::from_str`] and [`serde_json::from_slice`] which support
+/// [`serde_edn::from_str`] and [`serde_edn::from_slice`] which support
 /// borrowing from the input data without memory allocation.
 ///
-/// When deserializing through [`serde_json::from_reader`] you will need to use
+/// When deserializing through [`serde_edn::from_reader`] you will need to use
 /// the boxed form of `RawValue` instead. This is almost as efficient but
 /// involves buffering the raw value from the I/O stream into memory.
 ///
-/// [`serde_json::from_str`]: ../fn.from_str.html
-/// [`serde_json::from_slice`]: ../fn.from_slice.html
-/// [`serde_json::from_reader`]: ../fn.from_reader.html
+/// [`serde_edn::from_str`]: ../fn.from_str.html
+/// [`serde_edn::from_slice`]: ../fn.from_slice.html
+/// [`serde_edn::from_reader`]: ../fn.from_reader.html
 ///
 /// ```
 /// # #[macro_use]
 /// # extern crate serde_derive;
-/// # extern crate serde_json;
+/// # extern crate serde_edn;
 /// #
-/// # use serde_json::value::RawValue;
+/// # use serde_edn::value::RawValue;
 /// #
 /// #[derive(Deserialize)]
 /// struct SomeStruct {
@@ -116,25 +116,25 @@ use error::Error;
 ///
 /// # Note
 ///
-/// `RawValue` is only available if serde\_json is built with the `"raw_value"`
+/// `RawValue` is only available if serde\_edn is built with the `"raw_value"`
 /// feature.
 ///
 /// ```toml
 /// [dependencies]
-/// serde_json = { version = "1.0", features = ["raw_value"] }
+/// serde_edn = { version = "1.0", features = ["raw_value"] }
 /// ```
 #[repr(C)]
 pub struct RawValue {
-    json: str,
+    edn: str,
 }
 
 impl RawValue {
-    fn from_borrowed(json: &str) -> &Self {
-        unsafe { mem::transmute::<&str, &RawValue>(json) }
+    fn from_borrowed(edn: &str) -> &Self {
+        unsafe { mem::transmute::<&str, &RawValue>(edn) }
     }
 
-    fn from_owned(json: Box<str>) -> Box<Self> {
-        unsafe { mem::transmute::<Box<str>, Box<RawValue>>(json) }
+    fn from_owned(edn: Box<str>) -> Box<Self> {
+        unsafe { mem::transmute::<Box<str>, Box<RawValue>>(edn) }
     }
 }
 
@@ -148,7 +148,7 @@ impl ToOwned for RawValue {
     type Owned = Box<RawValue>;
 
     fn to_owned(&self) -> Self::Owned {
-        RawValue::from_owned(self.json.to_owned().into_boxed_str())
+        RawValue::from_owned(self.edn.to_owned().into_boxed_str())
     }
 }
 
@@ -162,46 +162,46 @@ impl Debug for RawValue {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         formatter
             .debug_tuple("RawValue")
-            .field(&format_args!("{}", &self.json))
+            .field(&format_args!("{}", &self.edn))
             .finish()
     }
 }
 
 impl Display for RawValue {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.write_str(&self.json)
+        f.write_str(&self.edn)
     }
 }
 
 impl RawValue {
-    /// Convert an owned `String` of JSON data to an owned `RawValue`.
+    /// Convert an owned `String` of edn data to an owned `RawValue`.
     ///
-    /// This function is equivalent to `serde_json::from_str::<Box<RawValue>>`
+    /// This function is equivalent to `serde_edn::from_str::<Box<RawValue>>`
     /// except that we avoid an allocation and memcpy if both of the following
     /// are true:
     ///
     /// - the input has no leading or trailing whitespace, and
     /// - the input has capacity equal to its length.
-    pub fn from_string(json: String) -> Result<Box<Self>, Error> {
+    pub fn from_string(edn: String) -> Result<Box<Self>, Error> {
         {
-            let borrowed = ::from_str::<&Self>(&json)?;
-            if borrowed.json.len() < json.len() {
+            let borrowed = ::from_str::<&Self>(&edn)?;
+            if borrowed.edn.len() < edn.len() {
                 return Ok(borrowed.to_owned());
             }
         }
-        Ok(Self::from_owned(json.into_boxed_str()))
+        Ok(Self::from_owned(edn.into_boxed_str()))
     }
 
-    /// Access the JSON text underlying a raw value.
+    /// Access the edn text underlying a raw value.
     ///
     /// # Example
     ///
     /// ```
     /// #[macro_use]
     /// extern crate serde_derive;
-    /// extern crate serde_json;
+    /// extern crate serde_edn;
     ///
-    /// use serde_json::{Result, value::RawValue};
+    /// use serde_edn::{Result, value::RawValue};
     ///
     /// #[derive(Deserialize)]
     /// struct Response<'a> {
@@ -211,11 +211,11 @@ impl RawValue {
     /// }
     ///
     /// fn process(input: &str) -> Result<()> {
-    ///     let response: Response = serde_json::from_str(input)?;
+    ///     let response: Response = serde_edn::from_str(input)?;
     ///
     ///     let payload = response.payload.get();
     ///     if payload.starts_with('{') {
-    ///         // handle a payload which is a JSON map
+    ///         // handle a payload which is a edn map
     ///     } else {
     ///         // handle any other type
     ///     }
@@ -229,11 +229,11 @@ impl RawValue {
     /// }
     /// ```
     pub fn get(&self) -> &str {
-        &self.json
+        &self.edn
     }
 }
 
-pub const TOKEN: &'static str = "$serde_json::private::RawValue";
+pub const TOKEN: &'static str = "$serde_edn::private::RawValue";
 
 impl Serialize for RawValue {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -241,7 +241,7 @@ impl Serialize for RawValue {
         S: Serializer,
     {
         let mut s = serializer.serialize_struct(TOKEN, 1)?;
-        s.serialize_field(TOKEN, &self.json)?;
+        s.serialize_field(TOKEN, &self.edn)?;
         s.end()
     }
 }
@@ -257,7 +257,7 @@ impl<'de: 'a, 'a> Deserialize<'de> for &'a RawValue {
             type Value = &'de RawValue;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                write!(formatter, "any valid JSON value")
+                write!(formatter, "any valid edn value")
             }
 
             fn visit_map<V>(self, mut visitor: V) -> Result<Self::Value, V::Error>
@@ -287,7 +287,7 @@ impl<'de> Deserialize<'de> for Box<RawValue> {
             type Value = Box<RawValue>;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                write!(formatter, "any valid JSON value")
+                write!(formatter, "any valid edn value")
             }
 
             fn visit_map<V>(self, mut visitor: V) -> Result<Self::Value, V::Error>

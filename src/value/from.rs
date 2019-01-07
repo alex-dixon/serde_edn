@@ -42,10 +42,10 @@ impl From<f32> for Value {
     /// # Examples
     ///
     /// ```rust
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// use serde_json::Value;
+    /// use serde_edn::Value;
     ///
     /// let f: f32 = 13.37;
     /// let x: Value = f.into();
@@ -62,10 +62,10 @@ impl From<f64> for Value {
     /// # Examples
     ///
     /// ```rust
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// use serde_json::Value;
+    /// use serde_edn::Value;
     ///
     /// let f: f64 = 13.37;
     /// let x: Value = f.into();
@@ -82,10 +82,10 @@ impl From<bool> for Value {
     /// # Examples
     ///
     /// ```rust
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// use serde_json::Value;
+    /// use serde_edn::Value;
     ///
     /// let b = false;
     /// let x: Value = b.into();
@@ -102,10 +102,10 @@ impl From<String> for Value {
     /// # Examples
     ///
     /// ```rust
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// use serde_json::Value;
+    /// use serde_edn::Value;
     ///
     /// let s: String = "lorem".to_string();
     /// let x: Value = s.into();
@@ -122,10 +122,10 @@ impl<'a> From<&'a str> for Value {
     /// # Examples
     ///
     /// ```rust
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// use serde_json::Value;
+    /// use serde_edn::Value;
     ///
     /// let s: &str = "lorem";
     /// let x: Value = s.into();
@@ -142,10 +142,10 @@ impl<'a> From<Cow<'a, str>> for Value {
     /// # Examples
     ///
     /// ```rust
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// use serde_json::Value;
+    /// use serde_edn::Value;
     /// use std::borrow::Cow;
     ///
     /// let s: Cow<str> = Cow::Borrowed("lorem");
@@ -154,10 +154,10 @@ impl<'a> From<Cow<'a, str>> for Value {
     /// ```
     ///
     /// ```rust
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// use serde_json::Value;
+    /// use serde_edn::Value;
     /// use std::borrow::Cow;
     ///
     /// let s: Cow<str> = Cow::Owned("lorem".to_string());
@@ -175,10 +175,10 @@ impl From<Map<String, Value>> for Value {
     /// # Examples
     ///
     /// ```rust
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// use serde_json::{Map, Value};
+    /// use serde_edn::{Map, Value};
     ///
     /// let mut m = Map::new();
     /// m.insert("Lorem".to_string(), "ipsum".into());
@@ -196,10 +196,10 @@ impl<T: Into<Value>> From<Vec<T>> for Value {
     /// # Examples
     ///
     /// ```rust
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// use serde_json::Value;
+    /// use serde_edn::Value;
     ///
     /// let v = vec!["lorem", "ipsum", "dolor"];
     /// let x: Value = v.into();
@@ -216,10 +216,10 @@ impl<'a, T: Clone + Into<Value>> From<&'a [T]> for Value {
     /// # Examples
     ///
     /// ```rust
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// use serde_json::Value;
+    /// use serde_edn::Value;
     ///
     /// let v: &[&str] = &["lorem", "ipsum", "dolor"];
     /// let x: Value = v.into();
@@ -236,10 +236,10 @@ impl<T: Into<Value>> ::std::iter::FromIterator<T> for Value {
     /// # Examples
     ///
     /// ```rust
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// use serde_json::Value;
+    /// use serde_edn::Value;
     ///
     /// let v = std::iter::repeat(42).take(5);
     /// let x: Value = v.collect();
@@ -247,10 +247,10 @@ impl<T: Into<Value>> ::std::iter::FromIterator<T> for Value {
     /// ```
     ///
     /// ```rust
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// use serde_json::Value;
+    /// use serde_edn::Value;
     ///
     /// let v: Vec<_> = vec!["lorem", "ipsum", "dolor"];
     /// let x: Value = v.into_iter().collect();
@@ -258,11 +258,11 @@ impl<T: Into<Value>> ::std::iter::FromIterator<T> for Value {
     /// ```
     ///
     /// ```rust
-    /// # extern crate serde_json;
+    /// # extern crate serde_edn;
     /// #
     /// # fn main() {
     /// use std::iter::FromIterator;
-    /// use serde_json::Value;
+    /// use serde_edn::Value;
     ///
     /// let x: Value = Value::from_iter(vec!["lorem", "ipsum", "dolor"]);
     /// # }

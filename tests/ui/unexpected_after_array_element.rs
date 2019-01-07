@@ -7,8 +7,8 @@
 // except according to those terms.
 
 #[macro_use]
-extern crate serde_json;
+extern crate serde_edn;
 
 fn main() {
-    json!([ true => ]);
+    edn!([ true => ]);
 }

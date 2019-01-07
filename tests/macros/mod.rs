@@ -6,14 +6,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-macro_rules! json_str {
+macro_rules! edn_str {
     ([]) => {
         "[]"
     };
     ([ $e1:tt $(, $e:tt)* ]) => {
         concat!("[",
-            json_str!($e1),
-            $(",", json_str!($e),)*
+            edn_str!($e1),
+            $(",", edn_str!($e),)*
         "]")
     };
     ({}) => {
@@ -21,8 +21,8 @@ macro_rules! json_str {
     };
     ({ $k1:tt : $v1:tt $(, $k:tt : $v:tt)* }) => {
         concat!("{",
-            stringify!($k1), ":", json_str!($v1),
-            $(",", stringify!($k), ":", json_str!($v),)*
+            stringify!($k1), ":", edn_str!($v1),
+            $(",", stringify!($k), ":", edn_str!($v),)*
         "}")
     };
     (($other:tt)) => {
@@ -34,8 +34,8 @@ macro_rules! json_str {
 }
 
 macro_rules! pretty_str {
-    ($json:tt) => {
-        pretty_str_impl!("", $json)
+    ($edn:tt) => {
+        pretty_str_impl!("", $edn)
     };
 }
 

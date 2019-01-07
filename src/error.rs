@@ -6,7 +6,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! When serializing or deserializing JSON goes wrong.
+//! When serializing or deserializing edn goes wrong.
 
 use std::error;
 use std::fmt::{self, Debug, Display};
@@ -17,7 +17,7 @@ use serde::de;
 use serde::ser;
 
 /// This type represents all possible errors that can occur when serializing or
-/// deserializing JSON data.
+/// deserializing edn data.
 pub struct Error {
     /// This `Box` allows us to keep the size of `Error` as small as possible. A
     /// larger `Error` type was substantially slower due to all the functions
@@ -25,7 +25,7 @@ pub struct Error {
     err: Box<ErrorImpl>,
 }
 
-/// Alias for a `Result` with the error type `serde_json::Error`.
+/// Alias for a `Result` with the error type `serde_edn::Error`.
 pub type Result<T> = result::Result<T, Error>;
 
 impl Error {
@@ -51,7 +51,7 @@ impl Error {
     /// Categorizes the cause of this error.
     ///
     /// - `Category::Io` - failure to read or write bytes on an IO stream
-    /// - `Category::Syntax` - input that is not syntactically valid JSON
+    /// - `Category::Syntax` - input that is not syntactically valid edn
     /// - `Category::Data` - input data that is semantically incorrect
     /// - `Category::Eof` - unexpected end of the input data
     pub fn classify(&self) -> Category {
@@ -90,7 +90,7 @@ impl Error {
     }
 
     /// Returns true if this error was caused by input that was not
-    /// syntactically valid JSON.
+    /// syntactically valid edn.
     pub fn is_syntax(&self) -> bool {
         self.classify() == Category::Syntax
     }
@@ -98,7 +98,7 @@ impl Error {
     /// Returns true if this error was caused by input data that was
     /// semantically incorrect.
     ///
-    /// For example, JSON containing a number is semantically incorrect when the
+    /// For example, edn containing a number is semantically incorrect when the
     /// type being deserialized into holds a String.
     pub fn is_data(&self) -> bool {
         self.classify() == Category::Data
@@ -114,19 +114,19 @@ impl Error {
     }
 }
 
-/// Categorizes the cause of a `serde_json::Error`.
+/// Categorizes the cause of a `serde_edn::Error`.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum Category {
     /// The error was caused by a failure to read or write bytes on an IO
     /// stream.
     Io,
 
-    /// The error was caused by input that was not syntactically valid JSON.
+    /// The error was caused by input that was not syntactically valid edn.
     Syntax,
 
     /// The error was caused by input data that was semantically incorrect.
     ///
-    /// For example, JSON containing a number is semantically incorrect when the
+    /// For example, edn containing a number is semantically incorrect when the
     /// type being deserialized into holds a String.
     Data,
 
@@ -139,9 +139,9 @@ pub enum Category {
 
 #[cfg_attr(feature = "cargo-clippy", allow(fallible_impl_from))]
 impl From<Error> for io::Error {
-    /// Convert a `serde_json::Error` into an `io::Error`.
+    /// Convert a `serde_edn::Error` into an `io::Error`.
     ///
-    /// JSON syntax and data errors are turned into `InvalidData` IO errors.
+    /// edn syntax and data errors are turned into `InvalidData` IO errors.
     /// EOF errors are turned into `UnexpectedEof` IO errors.
     ///
     /// ```rust
@@ -149,18 +149,18 @@ impl From<Error> for io::Error {
     ///
     /// enum MyError {
     ///     Io(io::Error),
-    ///     Json(serde_json::Error),
+    ///     edn(serde_edn::Error),
     /// }
     ///
-    /// impl From<serde_json::Error> for MyError {
-    ///     fn from(err: serde_json::Error) -> MyError {
-    ///         use serde_json::error::Category;
+    /// impl From<serde_edn::Error> for MyError {
+    ///     fn from(err: serde_edn::Error) -> MyError {
+    ///         use serde_edn::error::Category;
     ///         match err.classify() {
     ///             Category::Io => {
     ///                 MyError::Io(err.into())
     ///             }
     ///             Category::Syntax | Category::Data | Category::Eof => {
-    ///                 MyError::Json(err)
+    ///                 MyError::edn(err)
     ///             }
     ///         }
     ///     }
@@ -203,7 +203,7 @@ pub enum ErrorCode {
     /// EOF while parsing a string.
     EofWhileParsingString,
 
-    /// EOF while parsing a JSON value.
+    /// EOF while parsing a edn value.
     EofWhileParsingValue,
 
     /// Expected this character to be a `':'`.
@@ -221,10 +221,10 @@ pub enum ErrorCode {
     /// Expected to parse either a `true`, `false`, or a `null`.
     ExpectedSomeIdent,
 
-    /// Expected this character to start a JSON value.
+    /// Expected this character to start a edn value.
     ExpectedSomeValue,
 
-    /// Expected this character to start a JSON string.
+    /// Expected this character to start a edn string.
     ExpectedSomeString,
 
     /// Invalid hex escape code.
@@ -248,16 +248,16 @@ pub enum ErrorCode {
     /// Lone leading surrogate in hex escape.
     LoneLeadingSurrogateInHexEscape,
 
-    /// JSON has a comma after the last value in an array or map.
+    /// edn has a comma after the last value in an array or map.
     TrailingComma,
 
-    /// JSON has non-whitespace trailing characters after the value.
+    /// edn has non-whitespace trailing characters after the value.
     TrailingCharacters,
 
     /// Unexpected end of hex excape.
     UnexpectedEndOfHexEscape,
 
-    /// Encountered nesting of JSON maps and arrays more than 128 layers deep.
+    /// Encountered nesting of edn maps and arrays more than 128 layers deep.
     RecursionLimitExceeded,
 }
 
@@ -277,7 +277,7 @@ impl Error {
 
     // Not public API. Should be pub(crate).
     //
-    // Update `eager_json` crate when this function changes.
+    // Update `eager_edn` crate when this function changes.
     #[doc(hidden)]
     #[cold]
     pub fn io(error: io::Error) -> Self {
@@ -346,7 +346,7 @@ impl error::Error for Error {
             ErrorCode::Io(ref err) => error::Error::description(err),
             _ => {
                 // If you want a better message, use Display::fmt or to_string().
-                "JSON error"
+                "edn error"
             }
         }
     }
