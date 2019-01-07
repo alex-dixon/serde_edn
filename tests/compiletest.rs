@@ -22,8 +22,8 @@ fn run_mode(mode: &'static str) {
 
     compiletest::run_tests(&config);
 }
-
-#[test]
-fn ui() {
-    run_mode("ui");
-}
+//
+//#[test]
+//fn ui() {
+//    run_mode("ui");
+//}

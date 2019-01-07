@@ -21,7 +21,7 @@ impl Serialize for Value {
         S: ::serde::Serializer,
     {
         match *self {
-            Value::Null => serializer.serialize_unit(),
+            Value::Nil => serializer.serialize_unit(),
             Value::Bool(b) => serializer.serialize_bool(b),
             Value::Number(ref n) => n.serialize(serializer),
             Value::String(ref s) => serializer.serialize_str(s),
@@ -118,7 +118,7 @@ impl serde::Serializer for Serializer {
 
     #[inline]
     fn serialize_f64(self, value: f64) -> Result<Value, Error> {
-        Ok(Number::from_f64(value).map_or(Value::Null, Value::Number))
+        Ok(Number::from_f64(value).map_or(Value::Nil, Value::Number))
     }
 
     #[inline]
@@ -140,7 +140,7 @@ impl serde::Serializer for Serializer {
 
     #[inline]
     fn serialize_unit(self) -> Result<Value, Error> {
-        Ok(Value::Null)
+        Ok(Value::Nil)
     }
 
     #[inline]

@@ -253,7 +253,7 @@ macro_rules! edn_internal {
     //////////////////////////////////////////////////////////////////////////
 
     (nil) => {
-        $crate::Value::Null
+        $crate::Value::Nil
     };
 
     (true) => {

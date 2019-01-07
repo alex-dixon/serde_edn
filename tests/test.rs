@@ -929,7 +929,7 @@ fn test_serialize_char() {
             map
         })
     );
-    assert_eq!(&Value::Null, value.get("c").unwrap());
+    assert_eq!(&Value::Nil, value.get("c").unwrap());
 }
 
 #[cfg(feature = "arbitrary_precision")]

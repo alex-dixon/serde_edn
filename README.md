@@ -66,7 +66,7 @@ representation. This data structure is [`serde_edn::Value`][value].
 
 ```rust,ignore
 enum Value {
-    Null,
+    Nil,
     Bool(bool),
     Number(Number),
     String(String),
@@ -116,7 +116,7 @@ at that index, so the type is `&Value`. A edn map can be indexed with string
 keys, while a edn array can be indexed with integer keys. If the type of the
 data is not right for the type with which it is being indexed, or if a map does
 not contain the key being indexed, or if the index into a vector is out of
-bounds, the returned element is `Value::Null`.
+bounds, the returned element is `Value::Nil`.
 
 When a `Value` is printed, it is printed as a edn string. So in the code above,
 the output looks like `Please call "John Doe" at the number "+44 1234567"`. The

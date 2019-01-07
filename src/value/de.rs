@@ -60,7 +60,7 @@ impl<'de> Deserialize<'de> for Value {
 
             #[inline]
             fn visit_f64<E>(self, value: f64) -> Result<Value, E> {
-                Ok(Number::from_f64(value).map_or(Value::Null, Value::Number))
+                Ok(Number::from_f64(value).map_or(Value::Nil, Value::Number))
             }
 
             #[inline]
@@ -78,7 +78,7 @@ impl<'de> Deserialize<'de> for Value {
 
             #[inline]
             fn visit_none<E>(self) -> Result<Value, E> {
-                Ok(Value::Null)
+                Ok(Value::Nil)
             }
 
             #[inline]
@@ -91,7 +91,7 @@ impl<'de> Deserialize<'de> for Value {
 
             #[inline]
             fn visit_unit<E>(self) -> Result<Value, E> {
-                Ok(Value::Null)
+                Ok(Value::Nil)
             }
 
             #[inline]
@@ -220,7 +220,7 @@ impl<'de> serde::Deserializer<'de> for Value {
         V: Visitor<'de>,
     {
         match self {
-            Value::Null => visitor.visit_unit(),
+            Value::Nil => visitor.visit_unit(),
             Value::Bool(v) => visitor.visit_bool(v),
             Value::Number(n) => n.deserialize_any(visitor),
             Value::String(v) => visitor.visit_string(v),
@@ -251,7 +251,7 @@ impl<'de> serde::Deserializer<'de> for Value {
         V: Visitor<'de>,
     {
         match self {
-            Value::Null => visitor.visit_none(),
+            Value::Nil => visitor.visit_none(),
             _ => visitor.visit_some(self),
         }
     }
@@ -381,7 +381,7 @@ impl<'de> serde::Deserializer<'de> for Value {
         V: Visitor<'de>,
     {
         match self {
-            Value::Null => visitor.visit_unit(),
+            Value::Nil => visitor.visit_unit(),
             _ => Err(self.invalid_type(&visitor)),
         }
     }
@@ -761,7 +761,7 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
         V: Visitor<'de>,
     {
         match *self {
-            Value::Null => visitor.visit_unit(),
+            Value::Nil => visitor.visit_unit(),
             Value::Bool(v) => visitor.visit_bool(v),
             Value::Number(ref n) => n.deserialize_any(visitor),
             Value::String(ref v) => visitor.visit_borrowed_str(v),
@@ -791,7 +791,7 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
         V: Visitor<'de>,
     {
         match *self {
-            Value::Null => visitor.visit_none(),
+            Value::Nil => visitor.visit_none(),
             _ => visitor.visit_some(self),
         }
     }
@@ -920,7 +920,7 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
         V: Visitor<'de>,
     {
         match *self {
-            Value::Null => visitor.visit_unit(),
+            Value::Nil => visitor.visit_unit(),
             _ => Err(self.invalid_type(&visitor)),
         }
     }
@@ -1378,7 +1378,7 @@ impl Value {
     #[cold]
     fn unexpected(&self) -> Unexpected {
         match *self {
-            Value::Null => Unexpected::Unit,
+            Value::Nil => Unexpected::Unit,
             Value::Bool(b) => Unexpected::Bool(b),
             Value::Number(ref n) => n.unexpected(),
             Value::String(ref s) => Unexpected::Str(s),

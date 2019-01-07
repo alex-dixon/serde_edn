@@ -278,7 +278,7 @@ where
 /// #
 /// # fn main() {
 /// #     let mut map = serde_edn::Map::new();
-/// #     map.insert("key".to_owned(), serde_edn::Value::Null);
+/// #     map.insert("key".to_owned(), serde_edn::Value::Nil);
 /// #
 /// map["key"] = edn!("value");
 /// # }

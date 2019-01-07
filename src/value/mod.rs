@@ -141,7 +141,7 @@ pub enum Value {
     /// let v = edn!(nil);
     /// # }
     /// ```
-    Null,
+    Nil,
 
     /// Represents a edn boolean.
     ///
@@ -213,7 +213,7 @@ pub enum Value {
 impl Debug for Value {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Value::Null => formatter.debug_tuple("Null").finish(),
+            Value::Nil => formatter.debug_tuple("Nil").finish(),
             Value::Bool(v) => formatter.debug_tuple("Bool").field(&v).finish(),
             Value::Number(ref v) => Debug::fmt(v, formatter),
             Value::String(ref v) => formatter.debug_tuple("String").field(v).finish(),
@@ -318,7 +318,7 @@ impl Value {
     /// ```
     ///
     /// Square brackets can also be used to index into a value in a more concise
-    /// way. This returns `Value::Null` in cases where `get` would have returned
+    /// way. This returns `Value::Nil` in cases where `get` would have returned
     /// `None`.
     ///
     /// ```rust
@@ -780,7 +780,7 @@ impl Value {
         }
     }
 
-    /// Returns true if the `Value` is a Null. Returns false otherwise.
+    /// Returns true if the `Value` is a Nil. Returns false otherwise.
     ///
     /// For any Value on which `is_null` returns true, `as_null` is guaranteed
     /// to return `Some(())`.
@@ -802,7 +802,7 @@ impl Value {
         self.as_null().is_some()
     }
 
-    /// If the `Value` is a Null, returns (). Returns None otherwise.
+    /// If the `Value` is a Nil, returns (). Returns None otherwise.
     ///
     /// ```rust
     /// # #[macro_use]
@@ -819,7 +819,7 @@ impl Value {
     /// ```
     pub fn as_null(&self) -> Option<()> {
         match *self {
-            Value::Null => Some(()),
+            Value::Nil => Some(()),
             _ => None,
         }
     }
@@ -915,7 +915,7 @@ impl Value {
     ///     // "Steal" ownership of a value. Can replace with any valid Value.
     ///     let old_x = value.pointer_mut("/x").map(Value::take).unwrap();
     ///     assert_eq!(old_x, 1.5);
-    ///     assert_eq!(value.pointer("/x").unwrap(), &Value::Null);
+    ///     assert_eq!(value.pointer("/x").unwrap(), &Value::Nil);
     /// }
     /// ```
     pub fn pointer_mut<'a>(&'a mut self, pointer: &str) -> Option<&'a mut Value> {
@@ -951,7 +951,7 @@ impl Value {
         Some(target)
     }
 
-    /// Takes the value out of the `Value`, leaving a `Null` in its place.
+    /// Takes the value out of the `Value`, leaving a `Nil` in its place.
     ///
     /// ```rust
     /// # #[macro_use]
@@ -964,11 +964,11 @@ impl Value {
     /// # }
     /// ```
     pub fn take(&mut self) -> Value {
-        mem::replace(self, Value::Null)
+        mem::replace(self, Value::Nil)
     }
 }
 
-/// The default value is `Value::Null`.
+/// The default value is `Value::Nil`.
 ///
 /// This is useful for handling omitted `Value` fields when deserializing.
 ///
@@ -994,7 +994,7 @@ impl Value {
 /// let s: Settings = serde_edn::from_str(data)?;
 ///
 /// assert_eq!(s.level, 42);
-/// assert_eq!(s.extras, Value::Null);
+/// assert_eq!(s.extras, Value::Nil);
 /// #
 /// #     Ok(())
 /// # }
@@ -1005,7 +1005,7 @@ impl Value {
 /// ```
 impl Default for Value {
     fn default() -> Value {
-        Value::Null
+        Value::Nil
     }
 }
 

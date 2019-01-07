@@ -104,11 +104,11 @@ impl Index for str {
         }
     }
     fn index_or_insert<'v>(&self, v: &'v mut Value) -> &'v mut Value {
-        if let Value::Null = *v {
+        if let Value::Nil = *v {
             *v = Value::Object(Map::new());
         }
         match *v {
-            Value::Object(ref mut map) => map.entry(self.to_owned()).or_insert(Value::Null),
+            Value::Object(ref mut map) => map.entry(self.to_owned()).or_insert(Value::Nil),
             _ => panic!("cannot access key {:?} in edn {}", self, Type(v)),
         }
     }
@@ -156,7 +156,7 @@ struct Type<'a>(&'a Value);
 impl<'a> fmt::Display for Type<'a> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         match *self.0 {
-            Value::Null => formatter.write_str("null"),
+            Value::Nil => formatter.write_str("null"),
             Value::Bool(_) => formatter.write_str("boolean"),
             Value::Number(_) => formatter.write_str("number"),
             Value::String(_) => formatter.write_str("string"),
@@ -194,9 +194,9 @@ where
     /// Index into a `serde_edn::Value` using the syntax `value[0]` or
     /// `value["k"]`.
     ///
-    /// Returns `Value::Null` if the type of `self` does not match the type of
+    /// Returns `Value::Nil` if the type of `self` does not match the type of
     /// the index, for example if the index is a string and `self` is an array
-    /// or a number. Also returns `Value::Null` if the given key does not exist
+    /// or a number. Also returns `Value::Nil` if the given key does not exist
     /// in the map or the given index is not within the bounds of the array.
     ///
     /// For retrieving deeply nested values, you should have a look at the
@@ -223,7 +223,7 @@ where
     /// # }
     /// ```
     fn index(&self, index: I) -> &Value {
-        static NULL: Value = Value::Null;
+        static NULL: Value = Value::Nil;
         index.index_into(self).unwrap_or(&NULL)
     }
 }
