@@ -218,8 +218,8 @@ where
     /// assert_eq!(data["x"]["y"], edn!(["z", "zz"]));
     /// assert_eq!(data["x"]["y"][0], edn!("z"));
     ///
-    /// assert_eq!(data["a"], edn!(null)); // returns null for undefined values
-    /// assert_eq!(data["a"]["b"], edn!(null)); // does not panic
+    /// assert_eq!(data["a"], edn!(nil)); // returns null for undefined values
+    /// assert_eq!(data["a"]["b"], edn!(nil)); // does not panic
     /// # }
     /// ```
     fn index(&self, index: I) -> &Value {

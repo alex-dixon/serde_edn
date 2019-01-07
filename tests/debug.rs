@@ -15,7 +15,7 @@ fn number() {
 
 #[test]
 fn value_null() {
-    assert_eq!(format!("{:?}", edn!(null)), "Null");
+    assert_eq!(format!("{:?}", edn!(nil)), "Null");
 }
 
 #[test]

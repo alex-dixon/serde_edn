@@ -114,7 +114,7 @@ where
 
 #[test]
 fn test_write_null() {
-    let tests = &[((), "null")];
+    let tests = &[((), "nil")];
     test_encode_ok(tests);
     test_pretty_encode_ok(tests);
 }
@@ -238,16 +238,16 @@ fn test_write_list() {
         (vec![true, false], pretty_str!([true, false])),
     ]);
 
-    let long_test_list = edn!([false, null, ["foo\nbar", 3.5]]);
+    let long_test_list = edn!([false, nil, ["foo\nbar", 3.5]]);
 
     test_encode_ok(&[(
         long_test_list.clone(),
-        edn_str!([false, null, ["foo\nbar", 3.5]]),
+        edn_str!([false, nil, ["foo\nbar", 3.5]]),
     )]);
 
     test_pretty_encode_ok(&[(
         long_test_list,
-        pretty_str!([false, null, ["foo\nbar", 3.5]]),
+        pretty_str!([false, nil, ["foo\nbar", 3.5]]),
     )]);
 }
 
@@ -312,7 +312,7 @@ fn test_write_object() {
         ),
     ]);
 
-    test_encode_ok(&[(treemap!['c' => ()], "{\"c\":null}")]);
+    test_encode_ok(&[(treemap!['c' => ()], "{\"c\":nil}")]);
 
     test_pretty_encode_ok(&[
         (
@@ -542,17 +542,17 @@ fn test_write_enum() {
 
 #[test]
 fn test_write_option() {
-    test_encode_ok(&[(None, "null"), (Some("jodhpurs"), "\"jodhpurs\"")]);
+    test_encode_ok(&[(None, "nil"), (Some("jodhpurs"), "\"jodhpurs\"")]);
 
     test_encode_ok(&[
-        (None, "null"),
+        (None, "nil"),
         (Some(vec!["foo", "bar"]), "[\"foo\",\"bar\"]"),
     ]);
 
-    test_pretty_encode_ok(&[(None, "null"), (Some("jodhpurs"), "\"jodhpurs\"")]);
+    test_pretty_encode_ok(&[(None, "nil"), (Some("jodhpurs"), "\"jodhpurs\"")]);
 
     test_pretty_encode_ok(&[
-        (None, "null"),
+        (None, "nil"),
         (Some(vec!["foo", "bar"]), pretty_str!(["foo", "bar"])),
     ]);
 }
@@ -681,11 +681,11 @@ where
 fn test_parse_null() {
     test_parse_err::<()>(&[
         ("n", "EOF while parsing a value at line 1 column 1"),
-        ("nul", "EOF while parsing a value at line 1 column 3"),
-        ("nulla", "trailing characters at line 1 column 5"),
+        ("ni", "EOF while parsing a value at line 1 column 2"),
+        ("nila", "trailing characters at line 1 column 4"),
     ]);
 
-    test_parse_ok(vec![("null", ())]);
+    test_parse_ok(vec![("nil", ())]);
 }
 
 #[test]
@@ -1070,8 +1070,8 @@ fn test_parse_list() {
     test_parse_ok(vec![
         ("[]", vec![]),
         ("[ ]", vec![]),
-        ("[null]", vec![()]),
-        (" [ null ] ", vec![()]),
+        ("[nil]", vec![()]),
+        (" [ nil ] ", vec![()]),
     ]);
 
     test_parse_ok(vec![("[true]", vec![true])]);
@@ -1131,7 +1131,7 @@ fn test_parse_object() {
         ),
     )]);
 
-    test_parse_ok(vec![("{\"c\":null}", treemap!('c' => ()))]);
+    test_parse_ok(vec![("{\"c\":nil}", treemap!('c' => ()))]);
 }
 
 #[test]
@@ -1170,7 +1170,7 @@ fn test_parse_struct() {
         (
             "{
                 \"inner\": [
-                    { \"a\": null, \"b\": 2, \"c\": [\"abc\", \"xyz\"] }
+                    { \"a\": nil, \"b\": 2, \"c\": [\"abc\", \"xyz\"] }
                 ]
             }",
             Outer {
@@ -1186,7 +1186,7 @@ fn test_parse_struct() {
     let v: Outer = from_str(
         "[
             [
-                [ null, 2, [\"abc\", \"xyz\"] ]
+                [ nil, 2, [\"abc\", \"xyz\"] ]
             ]
         ]",
     )
@@ -1203,7 +1203,7 @@ fn test_parse_struct() {
         }
     );
 
-    let j = edn!([null, 2, []]);
+    let j = edn!([nil, 2, []]);
     Inner::deserialize(&j).unwrap();
     Inner::deserialize(j).unwrap();
 }
@@ -1211,7 +1211,7 @@ fn test_parse_struct() {
 #[test]
 fn test_parse_option() {
     test_parse_ok(vec![
-        ("null", None::<String>),
+        ("nil", None::<String>),
         ("\"jodhpurs\"", Some("jodhpurs".to_string())),
     ]);
 
@@ -1224,7 +1224,7 @@ fn test_parse_option() {
     assert_eq!(value, Foo { x: None });
 
     test_parse_ok(vec![
-        ("{\"x\": null}", Foo { x: None }),
+        ("{\"x\": nil}", Foo { x: None }),
         ("{\"x\": 5}", Foo { x: Some(5) }),
     ]);
 }
@@ -1237,7 +1237,7 @@ fn test_parse_enum_errors() {
             ("[]", "expected value at line 1 column 1"),
             ("\"unknown\"",
              "unknown variant `unknown`, expected one of `Dog`, `Frog`, `Cat`, `AntHive` at line 1 column 9"),
-            ("{\"unknown\":null}",
+            ("{\"unknown\":nil}",
              "unknown variant `unknown`, expected one of `Dog`, `Frog`, `Cat`, `AntHive` at line 1 column 10"),
             ("{\"Dog\":", "EOF while parsing a value at line 1 column 7"),
             ("{\"Dog\":}", "expected value at line 1 column 8"),
@@ -1294,8 +1294,8 @@ fn test_parse_enum() {
     ]);
 
     test_parse_unusual_ok(vec![
-        ("{\"Dog\":null}", Animal::Dog),
-        (" { \"Dog\" : null } ", Animal::Dog),
+        ("{\"Dog\":nil}", Animal::Dog),
+        (" { \"Dog\" : nil } ", Animal::Dog),
     ]);
 
     test_parse_ok(vec![(
@@ -1748,11 +1748,11 @@ fn test_edn_pointer_mut() {
     // Example of ownership stealing
     assert_eq!(
         data.pointer_mut("/a~1b")
-            .map(|m| mem::replace(m, edn!(null)))
+            .map(|m| mem::replace(m, edn!(nil)))
             .unwrap(),
         1
     );
-    assert_eq!(data.pointer("/a~1b").unwrap(), &edn!(null));
+    assert_eq!(data.pointer("/a~1b").unwrap(), &edn!(nil));
 
     // Need to compare against a clone so we don't anger the borrow checker
     // by taking out two references to a mutable value
@@ -1783,7 +1783,7 @@ fn test_integer_key() {
     test_encode_ok(&[(&map, j)]);
     test_parse_ok(vec![(j, map)]);
 
-    let j = r#"{"x":null}"#;
+    let j = r#"{"x":nil}"#;
     test_parse_err::<BTreeMap<i32, ()>>(&[(
         j,
         "invalid type: string \"x\", expected i32 at line 1 column 4",
@@ -1810,14 +1810,14 @@ fn test_deny_float_key() {
 
 #[test]
 fn test_borrowed_key() {
-    let map: BTreeMap<&str, ()> = from_str("{\"borrowed\":null}").unwrap();
+    let map: BTreeMap<&str, ()> = from_str("{\"borrowed\":nil}").unwrap();
     let expected = treemap! { "borrowed" => () };
     assert_eq!(map, expected);
 
     #[derive(Deserialize, Debug, Ord, PartialOrd, Eq, PartialEq)]
     struct NewtypeStr<'a>(&'a str);
 
-    let map: BTreeMap<NewtypeStr, ()> = from_str("{\"borrowed\":null}").unwrap();
+    let map: BTreeMap<NewtypeStr, ()> = from_str("{\"borrowed\":nil}").unwrap();
     let expected = treemap! { NewtypeStr("borrowed") => () };
     assert_eq!(map, expected);
 }
@@ -1870,7 +1870,7 @@ fn test_edn_macro() {
     });
 
     #[deny(unused_results)]
-    let _ = edn!({ "architecture": [true, null] });
+    let _ = edn!({ "architecture": [true, nil] });
 }
 
 #[test]
@@ -2014,10 +2014,10 @@ fn test_borrow() {
 
 #[test]
 fn null_invalid_type() {
-    let err = serde_edn::from_str::<String>("null").unwrap_err();
+    let err = serde_edn::from_str::<String>("nil").unwrap_err();
     assert_eq!(
         format!("{}", err),
-        String::from("invalid type: null, expected a string at line 1 column 4")
+        String::from("invalid type: nil, expected a string at line 1 column 3")
     );
 }
 
@@ -2082,14 +2082,14 @@ fn test_borrowed_raw_value() {
     assert_eq!(edn!({"a": 1, "b": {"foo": 2}, "c": 3}), wrapper_to_value);
 
     let array_from_str: Vec<&RawValue> =
-        serde_edn::from_str(r#"["a", 42, {"foo": "bar"}, null]"#).unwrap();
+        serde_edn::from_str(r#"["a", 42, {"foo": "bar"}, nil]"#).unwrap();
     assert_eq!(r#""a""#, array_from_str[0].get());
     assert_eq!(r#"42"#, array_from_str[1].get());
     assert_eq!(r#"{"foo": "bar"}"#, array_from_str[2].get());
-    assert_eq!(r#"null"#, array_from_str[3].get());
+    assert_eq!(r#"nil"#, array_from_str[3].get());
 
     let array_to_string = serde_edn::to_string(&array_from_str).unwrap();
-    assert_eq!(r#"["a",42,{"foo": "bar"},null]"#, array_to_string);
+    assert_eq!(r#"["a",42,{"foo": "bar"},nil]"#, array_to_string);
 }
 
 #[cfg(feature = "raw_value")]
@@ -2123,21 +2123,21 @@ fn test_boxed_raw_value() {
     assert_eq!(edn!({"a": 1, "b": {"foo": 2}, "c": 3}), wrapper_to_value);
 
     let array_from_str: Vec<Box<RawValue>> =
-        serde_edn::from_str(r#"["a", 42, {"foo": "bar"}, null]"#).unwrap();
+        serde_edn::from_str(r#"["a", 42, {"foo": "bar"}, nil]"#).unwrap();
     assert_eq!(r#""a""#, array_from_str[0].get());
     assert_eq!(r#"42"#, array_from_str[1].get());
     assert_eq!(r#"{"foo": "bar"}"#, array_from_str[2].get());
-    assert_eq!(r#"null"#, array_from_str[3].get());
+    assert_eq!(r#"nil"#, array_from_str[3].get());
 
     let array_from_reader: Vec<Box<RawValue>> =
-        serde_edn::from_reader(br#"["a", 42, {"foo": "bar"}, null]"#.as_ref()).unwrap();
+        serde_edn::from_reader(br#"["a", 42, {"foo": "bar"}, nil]"#.as_ref()).unwrap();
     assert_eq!(r#""a""#, array_from_reader[0].get());
     assert_eq!(r#"42"#, array_from_reader[1].get());
     assert_eq!(r#"{"foo": "bar"}"#, array_from_reader[2].get());
-    assert_eq!(r#"null"#, array_from_reader[3].get());
+    assert_eq!(r#"nil"#, array_from_reader[3].get());
 
     let array_to_string = serde_edn::to_string(&array_from_str).unwrap();
-    assert_eq!(r#"["a",42,{"foo": "bar"},null]"#, array_to_string);
+    assert_eq!(r#"["a",42,{"foo": "bar"},nil]"#, array_to_string);
 }
 
 #[test]
@@ -2161,6 +2161,6 @@ fn test_borrow_in_map_key() {
         }
     }
 
-    let value = edn!({ "map": { "1": null } });
+    let value = edn!({ "map": { "1": nil } });
     Outer::deserialize(&value).unwrap();
 }

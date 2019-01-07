@@ -408,7 +408,7 @@ impl de::Error for Error {
     #[cold]
     fn invalid_type(unexp: de::Unexpected, exp: &de::Expected) -> Self {
         if let de::Unexpected::Unit = unexp {
-            Error::custom(format_args!("invalid type: null, expected {}", exp))
+            Error::custom(format_args!("invalid type: nil, expected {}", exp))
         } else {
             Error::custom(format_args!("invalid type: {}, expected {}", unexp, exp))
         }

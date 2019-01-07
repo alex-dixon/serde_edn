@@ -138,7 +138,7 @@ pub enum Value {
     /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// let v = edn!(null);
+    /// let v = edn!(nil);
     /// # }
     /// ```
     Null,
@@ -333,8 +333,8 @@ impl Value {
     /// });
     /// assert_eq!(object["B"][0], edn!("b"));
     ///
-    /// assert_eq!(object["D"], edn!(null));
-    /// assert_eq!(object[0]["x"]["y"]["z"], edn!(null));
+    /// assert_eq!(object["D"], edn!(nil));
+    /// assert_eq!(object[0]["x"]["y"]["z"], edn!(nil));
     /// # }
     /// ```
     pub fn get<I: Index>(&self, index: I) -> Option<&Value> {
@@ -790,7 +790,7 @@ impl Value {
     /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// let v = edn!({ "a": null, "b": false });
+    /// let v = edn!({ "a": nil, "b": false });
     ///
     /// assert!(v["a"].is_null());
     ///
@@ -809,7 +809,7 @@ impl Value {
     /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// let v = edn!({ "a": null, "b": false });
+    /// let v = edn!({ "a": nil, "b": false });
     ///
     /// assert_eq!(v["a"].as_null(), Some(()));
     ///
@@ -960,7 +960,7 @@ impl Value {
     /// # fn main() {
     /// let mut v = edn!({ "x": "y" });
     /// assert_eq!(v["x"].take(), edn!("y"));
-    /// assert_eq!(v, edn!({ "x": null }));
+    /// assert_eq!(v, edn!({ "x": nil }));
     /// # }
     /// ```
     pub fn take(&mut self) -> Value {

@@ -1593,13 +1593,13 @@ impl CharEscape {
 /// This trait abstracts away serializing the edn control characters, which allows the user to
 /// optionally pretty print the edn output.
 pub trait Formatter {
-    /// Writes a `null` value to the specified writer.
+    /// Writes a `nil` value to the specified writer.
     #[inline]
     fn write_null<W: ?Sized>(&mut self, writer: &mut W) -> io::Result<()>
     where
         W: io::Write,
     {
-        writer.write_all(b"null")
+        writer.write_all(b"nil")
     }
 
     /// Writes a `true` or `false` value to the specified writer.

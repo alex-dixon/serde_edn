@@ -101,9 +101,9 @@ macro_rules! edn_internal {
         edn_internal_vec![$($elems),*]
     };
 
-    // Next element is `null`.
-    (@array [$($elems:expr,)*] null $($rest:tt)*) => {
-        edn_internal!(@array [$($elems,)* edn_internal!(null)] $($rest)*)
+    // Next element is `nil`.
+    (@array [$($elems:expr,)*] nil $($rest:tt)*) => {
+        edn_internal!(@array [$($elems,)* edn_internal!(nil)] $($rest)*)
     };
 
     // Next element is `true`.
@@ -175,9 +175,9 @@ macro_rules! edn_internal {
         let _ = $object.insert(($($key)+).into(), $value);
     };
 
-    // Next value is `null`.
-    (@object $object:ident ($($key:tt)+) (: null $($rest:tt)*) $copy:tt) => {
-        edn_internal!(@object $object [$($key)+] (edn_internal!(null)) $($rest)*);
+    // Next value is `nil`.
+    (@object $object:ident ($($key:tt)+) (: nil $($rest:tt)*) $copy:tt) => {
+        edn_internal!(@object $object [$($key)+] (edn_internal!(nil)) $($rest)*);
     };
 
     // Next value is `true`.
@@ -252,7 +252,7 @@ macro_rules! edn_internal {
     // Must be invoked as: edn_internal!($($edn)+)
     //////////////////////////////////////////////////////////////////////////
 
-    (null) => {
+    (nil) => {
         $crate::Value::Null
     };
 

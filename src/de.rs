@@ -202,7 +202,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         let err = match self.peek_or_null().unwrap_or(b'\x00') {
             b'n' => {
                 self.eat_char();
-                if let Err(err) = self.parse_ident(b"ull") {
+                if let Err(err) = self.parse_ident(b"il") {
                     return err;
                 }
                 de::Error::invalid_type(Unexpected::Unit, exp)
@@ -757,7 +757,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             let frame = match peek {
                 b'n' => {
                     self.eat_char();
-                    try!(self.parse_ident(b"ull"));
+                    try!(self.parse_ident(b"il"));
                     None
                 }
                 b't' => {
@@ -1009,7 +1009,7 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
         let value = match peek {
             b'n' => {
                 self.eat_char();
-                try!(self.parse_ident(b"ull"));
+                try!(self.parse_ident(b"il"));
                 visitor.visit_unit()
             }
             b't' => {
@@ -1349,7 +1349,7 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
         self.deserialize_bytes(visitor)
     }
 
-    /// Parses a `null` as a None, and any other values as a `Some(...)`.
+    /// Parses a `nil` as a None, and any other values as a `Some(...)`.
     #[inline]
     fn deserialize_option<V>(self, visitor: V) -> Result<V::Value>
     where
@@ -1358,7 +1358,7 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
         match try!(self.parse_whitespace()) {
             Some(b'n') => {
                 self.eat_char();
-                try!(self.parse_ident(b"ull"));
+                try!(self.parse_ident(b"il"));
                 visitor.visit_none()
             }
             _ => visitor.visit_some(self),
@@ -1379,7 +1379,7 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
         let value = match peek {
             b'n' => {
                 self.eat_char();
-                try!(self.parse_ident(b"ull"));
+                try!(self.parse_ident(b"il"));
                 visitor.visit_unit()
             }
             _ => Err(self.peek_invalid_type(&visitor)),
