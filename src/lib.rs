@@ -57,7 +57,7 @@
 //!     Bool(bool),
 //!     Number(Number),
 //!     String(String),
-//!     Array(Vec<Value>),
+//!     Vector(Vec<Value>),
 //!     Object(Map<String, Value>),
 //! }
 //! ```
@@ -76,9 +76,9 @@
 //! fn untyped_example() -> Result<(), Error> {
 //!     // Some edn input data as a &str. Maybe this comes from the user.
 //!     let data = r#"{
-//!                     "name": "John Doe",
-//!                     "age": 43,
-//!                     "phones": [
+//!                     "name" "John Doe",
+//!                     "age" 43,
+//!                     "phones" [
 //!                       "+44 1234567",
 //!                       "+44 2345678"
 //!                     ]
@@ -146,9 +146,9 @@
 //! fn typed_example() -> Result<(), Error> {
 //!     // Some edn input data as a &str. Maybe this comes from the user.
 //!     let data = r#"{
-//!                     "name": "John Doe",
-//!                     "age": 43,
-//!                     "phones": [
+//!                     "name" "John Doe",
+//!                     "age" 43,
+//!                     "phones" [
 //!                       "+44 1234567",
 //!                       "+44 2345678"
 //!                     ]

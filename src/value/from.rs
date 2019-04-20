@@ -206,7 +206,7 @@ impl<T: Into<Value>> From<Vec<T>> for Value {
     /// # }
     /// ```
     fn from(f: Vec<T>) -> Self {
-        Value::Array(f.into_iter().map(Into::into).collect())
+        Value::Vector(f.into_iter().map(Into::into).collect())
     }
 }
 
@@ -226,7 +226,7 @@ impl<'a, T: Clone + Into<Value>> From<&'a [T]> for Value {
     /// # }
     /// ```
     fn from(f: &'a [T]) -> Self {
-        Value::Array(f.iter().cloned().map(Into::into).collect())
+        Value::Vector(f.iter().cloned().map(Into::into).collect())
     }
 }
 
@@ -268,6 +268,6 @@ impl<T: Into<Value>> ::std::iter::FromIterator<T> for Value {
     /// # }
     /// ```
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
-        Value::Array(iter.into_iter().map(Into::into).collect())
+        Value::Vector(iter.into_iter().map(Into::into).collect())
     }
 }

@@ -70,7 +70,7 @@ enum Value {
     Bool(bool),
     Number(Number),
     String(String),
-    Array(Vec<Value>),
+    Vector(Vec<Value>),
     Object(Map<String, Value>),
 }
 ```

@@ -61,11 +61,14 @@ impl Error {
             ErrorCode::EofWhileParsingList
             | ErrorCode::EofWhileParsingObject
             | ErrorCode::EofWhileParsingString
-            | ErrorCode::EofWhileParsingValue => Category::Eof,
+            | ErrorCode::EofWhileParsingValue
+            | ErrorCode::ExpectedWhitespace
+            => Category::Eof,
+
             ErrorCode::ExpectedColon
             | ErrorCode::ExpectedListCommaOrEnd
             | ErrorCode::ExpectedObjectCommaOrEnd
-            | ErrorCode::ExpectedObjectOrArray
+            | ErrorCode::ExpectedObjectOrVector
             | ErrorCode::ExpectedSomeIdent
             | ErrorCode::ExpectedSomeValue
             | ErrorCode::ExpectedSomeString
@@ -215,8 +218,12 @@ pub enum ErrorCode {
     /// Expected this character to be either a `','` or a `'}'`.
     ExpectedObjectCommaOrEnd,
 
+    ///
+    ExpectedWhitespace,
+
+
     /// Expected this character to be either a `'{'` or a `'['`.
-    ExpectedObjectOrArray,
+    ExpectedObjectOrVector,
 
     /// Expected to parse either a `true`, `false`, or a `null`.
     ExpectedSomeIdent,
@@ -315,9 +322,10 @@ impl Display for ErrorCode {
             ErrorCode::EofWhileParsingString => f.write_str("EOF while parsing a string"),
             ErrorCode::EofWhileParsingValue => f.write_str("EOF while parsing a value"),
             ErrorCode::ExpectedColon => f.write_str("expected `:`"),
+            ErrorCode::ExpectedWhitespace => f.write_str("expected whitespace"),
             ErrorCode::ExpectedListCommaOrEnd => f.write_str("expected `,` or `]`"),
             ErrorCode::ExpectedObjectCommaOrEnd => f.write_str("expected `,` or `}`"),
-            ErrorCode::ExpectedObjectOrArray => f.write_str("expected `{` or `[`"),
+            ErrorCode::ExpectedObjectOrVector => f.write_str("expected `{` or `[`"),
             ErrorCode::ExpectedSomeIdent => f.write_str("expected ident"),
             ErrorCode::ExpectedSomeValue => f.write_str("expected value"),
             ErrorCode::ExpectedSomeString => f.write_str("expected string"),

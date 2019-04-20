@@ -126,6 +126,16 @@ macro_rules! edn_internal {
         edn_internal!(@array [$($elems,)* edn_internal!({$($map)*})] $($rest)*)
     };
 
+    // TODO. "error: `$next:expr` is followed by `$rest:tt`, which is not allowed for `expr` fragments"
+// result of trying to get rid of commas
+// proc macros don't appear to be an option either, since
+// the compiler treats the arguments to them like native functions...:/
+    // Next element is an expression followed by comma.
+//    (@array [$($elems:expr)*] $next:expr  $($rest:tt)*) => {
+//        edn_internal!(@array [$($elems)* edn_internal!($next)] $($rest)*)
+//    };
+//
+
     // Next element is an expression followed by comma.
     (@array [$($elems:expr,)*] $next:expr, $($rest:tt)*) => {
         edn_internal!(@array [$($elems,)* edn_internal!($next),] $($rest)*)
@@ -265,11 +275,11 @@ macro_rules! edn_internal {
     };
 
     ([]) => {
-        $crate::Value::Array(edn_internal_vec![])
+        $crate::Value::Vector(edn_internal_vec![])
     };
 
     ([ $($tt:tt)+ ]) => {
-        $crate::Value::Array(edn_internal!(@array [] $($tt)+))
+        $crate::Value::Vector(edn_internal!(@array [] $($tt)+))
     };
 
     ({}) => {

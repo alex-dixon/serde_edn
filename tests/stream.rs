@@ -43,7 +43,7 @@ macro_rules! test_stream {
 
 #[test]
 fn test_edn_stream_newlines() {
-    let data = "{\"x\":39} {\"x\":40}{\"x\":41}\n{\"x\":42}";
+    let data = "{\"x\" 39} {\"x\" 40}{\"x\" 41}\n{\"x\" 42}";
 
     test_stream!(data, Value, |stream| {
         assert_eq!(stream.next().unwrap().unwrap()["x"], 39);
@@ -65,7 +65,7 @@ fn test_edn_stream_newlines() {
 
 #[test]
 fn test_edn_stream_trailing_whitespaces() {
-    let data = "{\"x\":42} \t\n";
+    let data = "{\"x\" 42} \t\n";
 
     test_stream!(data, Value, |stream| {
         assert_eq!(stream.next().unwrap().unwrap()["x"], 42);
@@ -78,7 +78,7 @@ fn test_edn_stream_trailing_whitespaces() {
 
 #[test]
 fn test_edn_stream_truncated() {
-    let data = "{\"x\":40}\n{\"x\":";
+    let data = "{\"x\" 40}\n{\"x\" ";
 
     test_stream!(data, Value, |stream| {
         assert_eq!(stream.next().unwrap().unwrap()["x"], 40);

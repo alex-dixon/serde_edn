@@ -13,7 +13,7 @@ macro_rules! edn_str {
     ([ $e1:tt $(, $e:tt)* ]) => {
         concat!("[",
             edn_str!($e1),
-            $(",", edn_str!($e),)*
+            $(" ", edn_str!($e),)*
         "]")
     };
     ({}) => {
@@ -21,8 +21,8 @@ macro_rules! edn_str {
     };
     ({ $k1:tt : $v1:tt $(, $k:tt : $v:tt)* }) => {
         concat!("{",
-            stringify!($k1), ":", edn_str!($v1),
-            $(",", stringify!($k), ":", edn_str!($v),)*
+            stringify!($k1), " ", edn_str!($v1),
+            $(" ", stringify!($k), " ", edn_str!($v),)*
         "}")
     };
     (($other:tt)) => {
@@ -43,10 +43,10 @@ macro_rules! pretty_str_impl {
     ($indent:expr, []) => {
         "[]"
     };
-    ($indent:expr, [ $e1:tt $(, $e:tt)* ]) => {
+    ($indent:expr, [ $e1:tt $( $e:tt)* ]) => {
         concat!("[\n  ",
             $indent, pretty_str_impl!(concat!("  ", $indent), $e1),
-            $(",\n  ", $indent, pretty_str_impl!(concat!("  ", $indent), $e),)*
+            $("\n  ", $indent, pretty_str_impl!(concat!("  ", $indent), $e),)*
         "\n", $indent, "]")
     };
     ($indent:expr, {}) => {
@@ -54,8 +54,8 @@ macro_rules! pretty_str_impl {
     };
     ($indent:expr, { $k1:tt : $v1:tt $(, $k:tt : $v:tt)* }) => {
         concat!("{\n  ",
-            $indent, stringify!($k1), ": ", pretty_str_impl!(concat!("  ", $indent), $v1),
-            $(",\n  ", $indent, stringify!($k), ": ", pretty_str_impl!(concat!("  ", $indent), $v),)*
+            $indent, stringify!($k1), " ", pretty_str_impl!(concat!("  ", $indent), $v1),
+            $("\n  ", $indent, stringify!($k), " ", pretty_str_impl!(concat!("  ", $indent), $v),)*
         "\n", $indent, "}")
     };
     ($indent:expr, ($other:tt)) => {

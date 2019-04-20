@@ -251,7 +251,7 @@ impl PartialEq for Map<String, Value> {
 /// # let _ =
 /// match *val {
 ///     Value::String(ref s) => Some(s.as_str()),
-///     Value::Array(ref arr) => arr[0].as_str(),
+///     Value::Vector(ref xs) => xs[0].as_str(),
 ///     Value::Object(ref map) => map["type"].as_str(),
 ///     _ => None,
 /// }
@@ -635,12 +635,12 @@ impl<'a> OccupiedEntry<'a> {
     ///
     /// match map.entry("serde") {
     ///     Entry::Occupied(mut occupied) => {
-    ///         occupied.get_mut().as_array_mut().unwrap().push(edn!(4));
+    ///         occupied.get_mut().as_vector_mut().unwrap().push(edn!(4));
     ///     }
     ///     Entry::Vacant(_) => unimplemented!(),
     /// }
     ///
-    /// assert_eq!(map["serde"].as_array().unwrap().len(), 4);
+    /// assert_eq!(map["serde"].as_vector().unwrap().len(), 4);
     /// # }
     /// ```
     #[inline]
@@ -664,12 +664,12 @@ impl<'a> OccupiedEntry<'a> {
     ///
     /// match map.entry("serde") {
     ///     Entry::Occupied(mut occupied) => {
-    ///         occupied.into_mut().as_array_mut().unwrap().push(edn!(4));
+    ///         occupied.into_mut().as_vector_mut().unwrap().push(edn!(4));
     ///     }
     ///     Entry::Vacant(_) => unimplemented!(),
     /// }
     ///
-    /// assert_eq!(map["serde"].as_array().unwrap().len(), 4);
+    /// assert_eq!(map["serde"].as_vector().unwrap().len(), 4);
     /// # }
     /// ```
     #[inline]

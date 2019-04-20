@@ -25,7 +25,7 @@ impl Serialize for Value {
             Value::Bool(b) => serializer.serialize_bool(b),
             Value::Number(ref n) => n.serialize(serializer),
             Value::String(ref s) => serializer.serialize_str(s),
-            Value::Array(ref v) => v.serialize(serializer),
+            Value::Vector(ref v) => v.serialize(serializer),
             Value::Object(ref m) => {
                 use serde::ser::SerializeMap;
                 let mut map = try!(serializer.serialize_map(Some(m.len())));
@@ -135,7 +135,7 @@ impl serde::Serializer for Serializer {
 
     fn serialize_bytes(self, value: &[u8]) -> Result<Value, Error> {
         let vec = value.iter().map(|&b| Value::Number(b.into())).collect();
-        Ok(Value::Array(vec))
+        Ok(Value::Vector(vec))
     }
 
     #[inline]
@@ -302,7 +302,7 @@ impl serde::ser::SerializeSeq for SerializeVec {
     }
 
     fn end(self) -> Result<Value, Error> {
-        Ok(Value::Array(self.vec))
+        Ok(Value::Vector(self.vec))
     }
 }
 
@@ -353,7 +353,7 @@ impl serde::ser::SerializeTupleVariant for SerializeTupleVariant {
     fn end(self) -> Result<Value, Error> {
         let mut object = Map::new();
 
-        object.insert(self.name, Value::Array(self.vec));
+        object.insert(self.name, Value::Vector(self.vec));
 
         Ok(Value::Object(object))
     }

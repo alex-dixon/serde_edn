@@ -20,7 +20,7 @@ fn test_map_order() {
     #[cfg(feature = "preserve_order")]
     const EXPECTED: &[&str] = &["b", "a", "c"];
 
-    let v: Value = from_str(r#"{"b":nil,"a":nil,"c":nil}"#).unwrap();
+    let v: Value = from_str(r#"{"b" nil "a" nil "c" nil}"#).unwrap();
     let keys: Vec<_> = v.as_object().unwrap().keys().collect();
     assert_eq!(keys, EXPECTED);
 }

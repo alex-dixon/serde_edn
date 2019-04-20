@@ -334,11 +334,11 @@ where
         if len == Some(0) {
             try!(self
                 .formatter
-                .begin_array(&mut self.writer)
+                .begin_vector(&mut self.writer)
                 .map_err(Error::io));
             try!(self
                 .formatter
-                .end_array(&mut self.writer)
+                .end_vector(&mut self.writer)
                 .map_err(Error::io));
             Ok(Compound::Map {
                 ser: self,
@@ -347,7 +347,7 @@ where
         } else {
             try!(self
                 .formatter
-                .begin_array(&mut self.writer)
+                .begin_vector(&mut self.writer)
                 .map_err(Error::io));
             Ok(Compound::Map {
                 ser: self,
@@ -560,13 +560,13 @@ where
             } => {
                 try!(ser
                     .formatter
-                    .begin_array_value(&mut ser.writer, *state == State::First)
+                    .begin_vector_value(&mut ser.writer, *state == State::First)
                     .map_err(Error::io));
                 *state = State::Rest;
                 try!(value.serialize(&mut **ser));
                 try!(ser
                     .formatter
-                    .end_array_value(&mut ser.writer)
+                    .end_vector_value(&mut ser.writer)
                     .map_err(Error::io));
                 Ok(())
             }
@@ -583,7 +583,7 @@ where
             Compound::Map { ser, state } => {
                 match state {
                     State::Empty => {}
-                    _ => try!(ser.formatter.end_array(&mut ser.writer).map_err(Error::io)),
+                    _ => try!(ser.formatter.end_vector(&mut ser.writer).map_err(Error::io)),
                 }
                 Ok(())
             }
@@ -661,7 +661,7 @@ where
             Compound::Map { ser, state } => {
                 match state {
                     State::Empty => {}
-                    _ => try!(ser.formatter.end_array(&mut ser.writer).map_err(Error::io)),
+                    _ => try!(ser.formatter.end_vector(&mut ser.writer).map_err(Error::io)),
                 }
                 try!(ser
                     .formatter
@@ -1787,45 +1787,45 @@ pub trait Formatter {
         writer.write_all(s)
     }
 
-    /// Called before every array.  Writes a `[` to the specified
+    /// Called before every vector.  Writes a `[` to the specified
     /// writer.
     #[inline]
-    fn begin_array<W: ?Sized>(&mut self, writer: &mut W) -> io::Result<()>
-    where
-        W: io::Write,
+    fn begin_vector<W: ?Sized>(&mut self, writer: &mut W) -> io::Result<()>
+        where
+            W: io::Write,
     {
         writer.write_all(b"[")
     }
 
-    /// Called after every array.  Writes a `]` to the specified
+    /// Called after every vector.  Writes a `]` to the specified
     /// writer.
     #[inline]
-    fn end_array<W: ?Sized>(&mut self, writer: &mut W) -> io::Result<()>
-    where
-        W: io::Write,
+    fn end_vector<W: ?Sized>(&mut self, writer: &mut W) -> io::Result<()>
+        where
+            W: io::Write,
     {
         writer.write_all(b"]")
     }
 
-    /// Called before every array value.  Writes a `,` if needed to
+    /// Called before every vector value.  Writes a `,` if needed to
     /// the specified writer.
     #[inline]
-    fn begin_array_value<W: ?Sized>(&mut self, writer: &mut W, first: bool) -> io::Result<()>
-    where
-        W: io::Write,
+    fn begin_vector_value<W: ?Sized>(&mut self, writer: &mut W, first:bool) -> io::Result<()>
+        where
+            W: io::Write,
     {
         if first {
             Ok(())
         } else {
-            writer.write_all(b",")
+            writer.write_all(b" ")
         }
     }
 
-    /// Called after every array value.
+    /// Called after every vector value.
     #[inline]
-    fn end_array_value<W: ?Sized>(&mut self, _writer: &mut W) -> io::Result<()>
-    where
-        W: io::Write,
+    fn end_vector_value<W: ?Sized>(&mut self, _writer: &mut W) -> io::Result<()>
+        where
+            W: io::Write,
     {
         Ok(())
     }
@@ -1859,7 +1859,7 @@ pub trait Formatter {
         if first {
             Ok(())
         } else {
-            writer.write_all(b",")
+            writer.write_all(b" ")
         }
     }
 
@@ -1882,7 +1882,7 @@ pub trait Formatter {
     where
         W: io::Write,
     {
-        writer.write_all(b":")
+        writer.write_all(b" ")
     }
 
     /// Called after every object value.
@@ -1943,9 +1943,9 @@ impl<'a> Default for PrettyFormatter<'a> {
 
 impl<'a> Formatter for PrettyFormatter<'a> {
     #[inline]
-    fn begin_array<W: ?Sized>(&mut self, writer: &mut W) -> io::Result<()>
-    where
-        W: io::Write,
+    fn begin_vector<W: ?Sized>(&mut self, writer: &mut W) -> io::Result<()>
+        where
+            W: io::Write,
     {
         self.current_indent += 1;
         self.has_value = false;
@@ -1953,9 +1953,9 @@ impl<'a> Formatter for PrettyFormatter<'a> {
     }
 
     #[inline]
-    fn end_array<W: ?Sized>(&mut self, writer: &mut W) -> io::Result<()>
-    where
-        W: io::Write,
+    fn end_vector<W: ?Sized>(&mut self, writer: &mut W) -> io::Result<()>
+        where
+            W: io::Write,
     {
         self.current_indent -= 1;
 
@@ -1968,23 +1968,23 @@ impl<'a> Formatter for PrettyFormatter<'a> {
     }
 
     #[inline]
-    fn begin_array_value<W: ?Sized>(&mut self, writer: &mut W, first: bool) -> io::Result<()>
+    fn begin_vector_value<W: ?Sized>(&mut self, writer: &mut W, first: bool) -> io::Result<()>
     where
         W: io::Write,
     {
         if first {
             try!(writer.write_all(b"\n"));
         } else {
-            try!(writer.write_all(b",\n"));
+            try!(writer.write_all(b"\n"));
         }
         try!(indent(writer, self.current_indent, self.indent));
         Ok(())
     }
 
     #[inline]
-    fn end_array_value<W: ?Sized>(&mut self, _writer: &mut W) -> io::Result<()>
-    where
-        W: io::Write,
+    fn end_vector_value<W: ?Sized>(&mut self, _writer: &mut W) -> io::Result<()>
+        where
+            W: io::Write,
     {
         self.has_value = true;
         Ok(())
@@ -2023,7 +2023,7 @@ impl<'a> Formatter for PrettyFormatter<'a> {
         if first {
             try!(writer.write_all(b"\n"));
         } else {
-            try!(writer.write_all(b",\n"));
+            try!(writer.write_all(b"\n"));
         }
         indent(writer, self.current_indent, self.indent)
     }
@@ -2033,7 +2033,7 @@ impl<'a> Formatter for PrettyFormatter<'a> {
     where
         W: io::Write,
     {
-        writer.write_all(b": ")
+        writer.write_all(b" ")
     }
 
     #[inline]

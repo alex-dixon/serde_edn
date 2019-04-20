@@ -80,9 +80,9 @@
 //! fn untyped_example() -> Result<(), Error> {
 //!     // Some edn input data as a &str. Maybe this comes from the user.
 //!     let data = r#"{
-//!                     "name": "John Doe",
-//!                     "age": 43,
-//!                     "phones": [
+//!                     "name" "John Doe",
+//!                     "age" 43,
+//!                     "phones" [
 //!                       "+44 1234567",
 //!                       "+44 2345678"
 //!                     ]
@@ -179,17 +179,17 @@ pub enum Value {
     /// ```
     String(String),
 
-    /// Represents a edn array.
+    /// Represents an edn vector.
     ///
     /// ```rust
     /// # #[macro_use]
     /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// let v = edn!(["an", "array"]);
+    /// let v = edn!(["a", "vector"]);
     /// # }
     /// ```
-    Array(Vec<Value>),
+    Vector(Vec<Value>),
 
     /// Represents a edn object.
     ///
@@ -217,7 +217,7 @@ impl Debug for Value {
             Value::Bool(v) => formatter.debug_tuple("Bool").field(&v).finish(),
             Value::Number(ref v) => Debug::fmt(v, formatter),
             Value::String(ref v) => formatter.debug_tuple("String").field(v).finish(),
-            Value::Array(ref v) => formatter.debug_tuple("Array").field(v).finish(),
+            Value::Vector(ref v) => formatter.debug_tuple("Vector").field(v).finish(),
             Value::Object(ref v) => formatter.debug_tuple("Object").field(v).finish(),
         }
     }
@@ -256,20 +256,20 @@ impl fmt::Display for Value {
     ///
     /// // Compact format:
     /// //
-    /// // {"city":"London","street":"10 Downing Street"}
+    /// // {"city" "London" "street" "10 Downing Street"}
     /// let compact = format!("{}", edn);
     /// assert_eq!(compact,
-    ///     "{\"city\":\"London\",\"street\":\"10 Downing Street\"}");
+    ///     "{\"city\" \"London\" \"street\" \"10 Downing Street\"}");
     ///
     /// // Pretty format:
     /// //
     /// // {
-    /// //   "city": "London",
-    /// //   "street": "10 Downing Street"
+    /// //   "city" "London",
+    /// //   "street" "10 Downing Street"
     /// // }
     /// let pretty = format!("{:#}", edn);
     /// assert_eq!(pretty,
-    ///     "{\n  \"city\": \"London\",\n  \"street\": \"10 Downing Street\"\n}");
+    ///     "{\n  \"city\" \"London\"\n  \"street\" \"10 Downing Street\"\n}");
     /// # }
     /// ```
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -293,14 +293,14 @@ fn parse_index(s: &str) -> Option<usize> {
 }
 
 impl Value {
-    /// Index into a edn array or map. A string index can be used to access a
-    /// value in a map, and a usize index can be used to access an element of an
-    /// array.
+    /// Index into a edn vector or map. A string index can be used to access a
+    /// value in a map, and a usize index can be used to access an element of a
+    /// vector.
     ///
     /// Returns `None` if the type of `self` does not match the type of the
-    /// index, for example if the index is a string and `self` is an array or a
+    /// index, for example if the index is a string and `self` is a vector or a
     /// number. Also returns `None` if the given key does not exist in the map
-    /// or the given index is not within the bounds of the array.
+    /// or the given index is not within the bounds of the vector.
     ///
     /// ```rust
     /// # #[macro_use]
@@ -310,10 +310,10 @@ impl Value {
     /// let object = edn!({ "A": 65, "B": 66, "C": 67 });
     /// assert_eq!(*object.get("A").unwrap(), edn!(65));
     ///
-    /// let array = edn!([ "A", "B", "C" ]);
-    /// assert_eq!(*array.get(2).unwrap(), edn!("C"));
+    /// let vector = edn!([ "A", "B", "C" ]);
+    /// assert_eq!(*vector.get(2).unwrap(), edn!("C"));
     ///
-    /// assert_eq!(array.get("A"), None);
+    /// assert_eq!(vector.get("A"), None);
     /// # }
     /// ```
     ///
@@ -341,14 +341,14 @@ impl Value {
         index.index_into(self)
     }
 
-    /// Mutably index into a edn array or map. A string index can be used to
+    /// Mutably index into a edn vector or map. A string index can be used to
     /// access a value in a map, and a usize index can be used to access an
-    /// element of an array.
+    /// element of an vector.
     ///
     /// Returns `None` if the type of `self` does not match the type of the
-    /// index, for example if the index is a string and `self` is an array or a
+    /// index, for example if the index is a string and `self` is an vector or a
     /// number. Also returns `None` if the given key does not exist in the map
-    /// or the given index is not within the bounds of the array.
+    /// or the given index is not within the bounds of the vector.
     ///
     /// ```rust
     /// # #[macro_use]
@@ -358,8 +358,8 @@ impl Value {
     /// let mut object = edn!({ "A": 65, "B": 66, "C": 67 });
     /// *object.get_mut("A").unwrap() = edn!(69);
     ///
-    /// let mut array = edn!([ "A", "B", "C" ]);
-    /// *array.get_mut(2).unwrap() = edn!("D");
+    /// let mut vector = edn!([ "A", "B", "C" ]);
+    /// *vector.get_mut(2).unwrap() = edn!("D");
     /// # }
     /// ```
     pub fn get_mut<I: Index>(&mut self, index: I) -> Option<&mut Value> {
@@ -377,12 +377,12 @@ impl Value {
     /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// let obj = edn!({ "a": { "nested": true }, "b": ["an", "array"] });
+    /// let obj = edn!({ "a": { "nested": true }, "b": ["a", "vector"] });
     ///
     /// assert!(obj.is_object());
     /// assert!(obj["a"].is_object());
     ///
-    /// // array, not an object
+    /// // vector, not an object
     /// assert!(!obj["b"].is_object());
     /// # }
     /// ```
@@ -398,12 +398,12 @@ impl Value {
     /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// let v = edn!({ "a": { "nested": true }, "b": ["an", "array"] });
+    /// let v = edn!({ "a": { "nested": true }, "b": ["a", "vector"] });
     ///
     /// // The length of `{"nested": true}` is 1 entry.
     /// assert_eq!(v["a"].as_object().unwrap().len(), 1);
     ///
-    /// // The array `["an", "array"]` is not an object.
+    /// // The vector `["a", "vector"]` is not an object.
     /// assert_eq!(v["b"].as_object(), None);
     /// # }
     /// ```
@@ -436,30 +436,30 @@ impl Value {
         }
     }
 
-    /// Returns true if the `Value` is an Array. Returns false otherwise.
+    /// Returns true if the `Value` is a Vector. Returns false otherwise.
     ///
-    /// For any Value on which `is_array` returns true, `as_array` and
-    /// `as_array_mut` are guaranteed to return the vector representing the
-    /// array.
+    /// For any Value on which `is_vector` returns true, `as_vector` and
+    /// `as_vector_mut` are guaranteed to return the vector representing the
+    /// vector.
     ///
     /// ```rust
     /// # #[macro_use]
     /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// let obj = edn!({ "a": ["an", "array"], "b": { "an": "object" } });
+    /// let obj = edn!({ "a": ["a", "vector"], "b": { "an": "object" } });
     ///
-    /// assert!(obj["a"].is_array());
+    /// assert!(obj["a"].is_vector());
     ///
-    /// // an object, not an array
-    /// assert!(!obj["b"].is_array());
+    /// // an object, not a vector
+    /// assert!(!obj["b"].is_vector());
     /// # }
     /// ```
-    pub fn is_array(&self) -> bool {
-        self.as_array().is_some()
+    pub fn is_vector(&self) -> bool {
+        self.as_vector().is_some()
     }
 
-    /// If the `Value` is an Array, returns the associated vector. Returns None
+    /// If the `Value` is a Vector, returns the associated vector. Returns None
     /// otherwise.
     ///
     /// ```rust
@@ -467,23 +467,23 @@ impl Value {
     /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// let v = edn!({ "a": ["an", "array"], "b": { "an": "object" } });
+    /// let v = edn!({ "a": ["a", "vector"], "b": { "an": "object" } });
     ///
-    /// // The length of `["an", "array"]` is 2 elements.
-    /// assert_eq!(v["a"].as_array().unwrap().len(), 2);
+    /// // The length of `["a", "vector"]` is 2 elements.
+    /// assert_eq!(v["a"].as_vector().unwrap().len(), 2);
     ///
-    /// // The object `{"an": "object"}` is not an array.
-    /// assert_eq!(v["b"].as_array(), None);
+    /// // The object `{"an": "object"}` is not an vector.
+    /// assert_eq!(v["b"].as_vector(), None);
     /// # }
     /// ```
-    pub fn as_array(&self) -> Option<&Vec<Value>> {
+    pub fn as_vector(&self) -> Option<&Vec<Value>> {
         match *self {
-            Value::Array(ref array) => Some(&*array),
+            Value::Vector(ref v) => Some(&*v),
             _ => None,
         }
     }
 
-    /// If the `Value` is an Array, returns the associated mutable vector.
+    /// If the `Value` is a Vector, returns the associated mutable vector.
     /// Returns None otherwise.
     ///
     /// ```rust
@@ -491,15 +491,15 @@ impl Value {
     /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// let mut v = edn!({ "a": ["an", "array"] });
+    /// let mut v = edn!({ "a": ["a", "vector"] });
     ///
-    /// v["a"].as_array_mut().unwrap().clear();
+    /// v["a"].as_vector_mut().unwrap().clear();
     /// assert_eq!(v, edn!({ "a": [] }));
     /// # }
     /// ```
-    pub fn as_array_mut(&mut self) -> Option<&mut Vec<Value>> {
+    pub fn as_vector_mut(&mut self) -> Option<&mut Vec<Value>> {
         match *self {
-            Value::Array(ref mut list) => Some(list),
+            Value::Vector(ref mut list) => Some(list),
             _ => None,
         }
     }
@@ -869,7 +869,7 @@ impl Value {
         for token in tokens {
             let target_opt = match *target {
                 Value::Object(ref map) => map.get(&token),
-                Value::Array(ref list) => parse_index(&token).and_then(|x| list.get(x)),
+                Value::Vector(ref list) => parse_index(&token).and_then(|x| list.get(x)),
                 _ => return None,
             };
             if let Some(t) = target_opt {
@@ -902,7 +902,7 @@ impl Value {
     /// use serde_edn::Value;
     ///
     /// fn main() {
-    ///     let s = r#"{"x": 1.0, "y": 2.0}"#;
+    ///     let s = r#"{"x" 1.0, "y" 2.0}"#;
     ///     let mut value: Value = serde_edn::from_str(s).unwrap();
     ///
     ///     // Check value using read-only pointer
@@ -937,7 +937,7 @@ impl Value {
             let target_once = target;
             let target_opt = match *target_once {
                 Value::Object(ref mut map) => map.get_mut(&token),
-                Value::Array(ref mut list) => {
+                Value::Vector(ref mut list) => {
                     parse_index(&token).and_then(move |x| list.get_mut(x))
                 }
                 _ => return None,
@@ -990,7 +990,7 @@ impl Value {
 /// }
 ///
 /// # fn try_main() -> Result<(), serde_edn::Error> {
-/// let data = r#" { "level": 42 } "#;
+/// let data = r#" { "level" 42 } "#;
 /// let s: Settings = serde_edn::from_str(data)?;
 ///
 /// assert_eq!(s.level, 42);

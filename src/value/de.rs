@@ -105,7 +105,7 @@ impl<'de> Deserialize<'de> for Value {
                     vec.push(elem);
                 }
 
-                Ok(Value::Array(vec))
+                Ok(Value::Vector(vec))
             }
 
             fn visit_map<V>(self, mut visitor: V) -> Result<Value, V::Error>
@@ -175,12 +175,12 @@ macro_rules! deserialize_prim_number {
     }
 }
 
-fn visit_array<'de, V>(array: Vec<Value>, visitor: V) -> Result<V::Value, Error>
+fn visit_vector<'de, V>(vector: Vec<Value>, visitor: V) -> Result<V::Value, Error>
 where
     V: Visitor<'de>,
 {
-    let len = array.len();
-    let mut deserializer = SeqDeserializer::new(array);
+    let len = vector.len();
+    let mut deserializer = SeqDeserializer::new(vector);
     let seq = try!(visitor.visit_seq(&mut deserializer));
     let remaining = deserializer.iter.len();
     if remaining == 0 {
@@ -188,7 +188,7 @@ where
     } else {
         Err(serde::de::Error::invalid_length(
             len,
-            &"fewer elements in array",
+            &"fewer elements in vector",
         ))
     }
 }
@@ -224,7 +224,7 @@ impl<'de> serde::Deserializer<'de> for Value {
             Value::Bool(v) => visitor.visit_bool(v),
             Value::Number(n) => n.deserialize_any(visitor),
             Value::String(v) => visitor.visit_string(v),
-            Value::Array(v) => visit_array(v, visitor),
+            Value::Vector(v) => visit_vector(v, visitor),
             Value::Object(v) => visit_object(v, visitor),
         }
     }
@@ -371,7 +371,7 @@ impl<'de> serde::Deserializer<'de> for Value {
     {
         match self {
             Value::String(v) => visitor.visit_string(v),
-            Value::Array(v) => visit_array(v, visitor),
+            Value::Vector(v) => visit_vector(v, visitor),
             _ => Err(self.invalid_type(&visitor)),
         }
     }
@@ -402,7 +402,7 @@ impl<'de> serde::Deserializer<'de> for Value {
         V: Visitor<'de>,
     {
         match self {
-            Value::Array(v) => visit_array(v, visitor),
+            Value::Vector(v) => visit_vector(v, visitor),
             _ => Err(self.invalid_type(&visitor)),
         }
     }
@@ -446,7 +446,7 @@ impl<'de> serde::Deserializer<'de> for Value {
         V: Visitor<'de>,
     {
         match self {
-            Value::Array(v) => visit_array(v, visitor),
+            Value::Vector(v) => visit_vector(v, visitor),
             Value::Object(v) => visit_object(v, visitor),
             _ => Err(self.invalid_type(&visitor)),
         }
@@ -519,7 +519,7 @@ impl<'de> VariantAccess<'de> for VariantDeserializer {
         V: Visitor<'de>,
     {
         match self.value {
-            Some(Value::Array(v)) => {
+            Some(Value::Vector(v)) => {
                 serde::Deserializer::deserialize_any(SeqDeserializer::new(v), visitor)
             }
             Some(other) => Err(serde::de::Error::invalid_type(
@@ -588,7 +588,7 @@ impl<'de> serde::Deserializer<'de> for SeqDeserializer {
             } else {
                 Err(serde::de::Error::invalid_length(
                     len,
-                    &"fewer elements in array",
+                    &"fewer elements in vector",
                 ))
             }
         }
@@ -717,12 +717,12 @@ macro_rules! deserialize_value_ref_number {
     }
 }
 
-fn visit_array_ref<'de, V>(array: &'de [Value], visitor: V) -> Result<V::Value, Error>
+fn visit_vector_ref<'de, V>(vector: &'de [Value], visitor: V) -> Result<V::Value, Error>
 where
     V: Visitor<'de>,
 {
-    let len = array.len();
-    let mut deserializer = SeqRefDeserializer::new(array);
+    let len = vector.len();
+    let mut deserializer = SeqRefDeserializer::new(vector);
     let seq = try!(visitor.visit_seq(&mut deserializer));
     let remaining = deserializer.iter.len();
     if remaining == 0 {
@@ -730,7 +730,7 @@ where
     } else {
         Err(serde::de::Error::invalid_length(
             len,
-            &"fewer elements in array",
+            &"fewer elements in vector",
         ))
     }
 }
@@ -765,7 +765,7 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
             Value::Bool(v) => visitor.visit_bool(v),
             Value::Number(ref n) => n.deserialize_any(visitor),
             Value::String(ref v) => visitor.visit_borrowed_str(v),
-            Value::Array(ref v) => visit_array_ref(v, visitor),
+            Value::Vector(ref v) => visit_vector_ref(v, visitor),
             Value::Object(ref v) => visit_object_ref(v, visitor),
         }
     }
@@ -903,7 +903,7 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
     {
         match *self {
             Value::String(ref v) => visitor.visit_borrowed_str(v),
-            Value::Array(ref v) => visit_array_ref(v, visitor),
+            Value::Vector(ref v) => visit_vector_ref(v, visitor),
             _ => Err(self.invalid_type(&visitor)),
         }
     }
@@ -941,7 +941,7 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
         V: Visitor<'de>,
     {
         match *self {
-            Value::Array(ref v) => visit_array_ref(v, visitor),
+            Value::Vector(ref v) => visit_vector_ref(v, visitor),
             _ => Err(self.invalid_type(&visitor)),
         }
     }
@@ -985,7 +985,7 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
         V: Visitor<'de>,
     {
         match *self {
-            Value::Array(ref v) => visit_array_ref(v, visitor),
+            Value::Vector(ref v) => visit_vector_ref(v, visitor),
             Value::Object(ref v) => visit_object_ref(v, visitor),
             _ => Err(self.invalid_type(&visitor)),
         }
@@ -1057,7 +1057,7 @@ impl<'de> VariantAccess<'de> for VariantRefDeserializer<'de> {
         V: Visitor<'de>,
     {
         match self.value {
-            Some(&Value::Array(ref v)) => {
+            Some(&Value::Vector(ref v)) => {
                 serde::Deserializer::deserialize_any(SeqRefDeserializer::new(v), visitor)
             }
             Some(other) => Err(serde::de::Error::invalid_type(
@@ -1124,7 +1124,7 @@ impl<'de> serde::Deserializer<'de> for SeqRefDeserializer<'de> {
             } else {
                 Err(serde::de::Error::invalid_length(
                     len,
-                    &"fewer elements in array",
+                    &"fewer elements in vector",
                 ))
             }
         }
@@ -1382,7 +1382,7 @@ impl Value {
             Value::Bool(b) => Unexpected::Bool(b),
             Value::Number(ref n) => n.unexpected(),
             Value::String(ref s) => Unexpected::Str(s),
-            Value::Array(_) => Unexpected::Seq,
+            Value::Vector(_) => Unexpected::Seq,
             Value::Object(_) => Unexpected::Map,
         }
     }

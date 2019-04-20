@@ -37,8 +37,8 @@ fn value_string() {
 }
 
 #[test]
-fn value_array() {
-    assert_eq!(format!("{:?}", edn!([])), "Array([])");
+fn value_vector() {
+    assert_eq!(format!("{:?}", edn!([])), "Vector([])");
 }
 
 #[test]

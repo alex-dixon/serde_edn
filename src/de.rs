@@ -187,7 +187,31 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     fn parse_whitespace(&mut self) -> Result<Option<u8>> {
         loop {
             match try!(self.peek()) {
-                Some(b' ') | Some(b'\n') | Some(b'\t') | Some(b'\r') => {
+                Some(b' ') | Some(b'\n') | Some(b'\t') | Some(b'\r') | Some(b',') => {
+                    self.eat_char();
+                }
+                other => {
+                    return Ok(other);
+                }
+            }
+        }
+    }
+
+    // either next char, or None.
+    // try! may return a peek error
+    fn parse_expected_whitespace(&mut self) -> Result<Option<u8>> {
+        // None if first char isn't whitespace
+        match try!(self.peek()) {
+            Some(b' ') | Some(b'\n') | Some(b'\t') | Some(b'\r') | Some(b',') => {
+                self.eat_char();
+            }
+            _ => return Ok(None)
+        };
+
+        // consume remaining whitespace before returning
+        loop {
+            match try!(self.peek()) {
+                Some(b' ') | Some(b'\n') | Some(b'\t') | Some(b'\r') | Some(b',') => {
                     self.eat_char();
                 }
                 other => {
@@ -702,13 +726,9 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     }
 
     fn parse_object_colon(&mut self) -> Result<()> {
-        match try!(self.parse_whitespace()) {
-            Some(b':') => {
-                self.eat_char();
-                Ok(())
-            }
-            Some(_) => Err(self.peek_error(ErrorCode::ExpectedColon)),
-            None => Err(self.peek_error(ErrorCode::EofWhileParsingObject)),
+        match try!(self.parse_expected_whitespace()) {
+            Some(_) => Ok(()),
+            None => Err(self.peek_error(ErrorCode::ExpectedWhitespace))
         }
     }
 
@@ -792,12 +812,12 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                 _ => return Err(self.peek_error(ErrorCode::ExpectedSomeValue)),
             };
 
-            let (mut accept_comma, mut frame) = match frame {
-                Some(frame) => (false, frame),
+            let mut frame = match frame {
+                Some(frame) => frame,
                 None => match enclosing.take() {
-                    Some(frame) => (true, frame),
+                    Some(frame) => frame,
                     None => match self.scratch.pop() {
-                        Some(frame) => (true, frame),
+                        Some(frame) => frame,
                         None => return Ok(()),
                     },
                 },
@@ -805,23 +825,9 @@ impl<'de, R: Read<'de>> Deserializer<R> {
 
             loop {
                 match try!(self.parse_whitespace()) {
-                    Some(b',') if accept_comma => {
-                        self.eat_char();
-                        break;
-                    }
                     Some(b']') if frame == b'[' => {}
                     Some(b'}') if frame == b'{' => {}
-                    Some(_) => {
-                        if accept_comma {
-                            return Err(self.peek_error(match frame {
-                                b'[' => ErrorCode::ExpectedListCommaOrEnd,
-                                b'{' => ErrorCode::ExpectedObjectCommaOrEnd,
-                                _ => unreachable!(),
-                            }));
-                        } else {
-                            break;
-                        }
-                    }
+                    Some(_) => { break; }
                     None => {
                         return Err(self.peek_error(match frame {
                             b'[' => ErrorCode::EofWhileParsingList,
@@ -836,7 +842,6 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                     Some(frame) => frame,
                     None => return Ok(()),
                 };
-                accept_comma = true;
             }
 
             if frame == b'{' {
@@ -845,11 +850,13 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                     Some(_) => return Err(self.peek_error(ErrorCode::KeyMustBeAString)),
                     None => return Err(self.peek_error(ErrorCode::EofWhileParsingObject)),
                 }
+                //todo. ignore key
                 try!(self.read.ignore_str());
-                match try!(self.parse_whitespace()) {
-                    Some(b':') => self.eat_char(),
-                    Some(_) => return Err(self.peek_error(ErrorCode::ExpectedColon)),
-                    None => return Err(self.peek_error(ErrorCode::EofWhileParsingObject)),
+                // to conform to tests, this needs to expect a whitespace
+                // (key delimiter / : ) and throw a Category::EOF error none found
+                match try!(self.parse_expected_whitespace()) {
+                    Some(_) => {}
+                    None => return Err(self.peek_error(ErrorCode::EofWhileParsingObject))
                 }
             }
 
@@ -1566,7 +1573,7 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
         }
     }
 
-    /// Parses an enum as an object like `{"$KEY":$VALUE}`, where $VALUE is either a straight
+    /// Parses an enum as an object like `{"$KEY" $VALUE}`, where $VALUE is either a straight
     /// value, a `[..]`, or a `{..}`.
     #[inline]
     fn deserialize_enum<V>(
@@ -1646,18 +1653,7 @@ impl<'de, 'a, R: Read<'de> + 'a> de::SeqAccess<'de> for SeqAccess<'a, R> {
             Some(b']') => {
                 return Ok(None);
             }
-            Some(b',') if !self.first => {
-                self.de.eat_char();
-                try!(self.de.parse_whitespace())
-            }
-            Some(b) => {
-                if self.first {
-                    self.first = false;
-                    Some(b)
-                } else {
-                    return Err(self.de.peek_error(ErrorCode::ExpectedListCommaOrEnd));
-                }
-            }
+            Some(b) => Some(b),
             None => {
                 return Err(self.de.peek_error(ErrorCode::EofWhileParsingList));
             }
@@ -1696,18 +1692,7 @@ impl<'de, 'a, R: Read<'de> + 'a> de::MapAccess<'de> for MapAccess<'a, R> {
             Some(b'}') => {
                 return Ok(None);
             }
-            Some(b',') if !self.first => {
-                self.de.eat_char();
-                try!(self.de.parse_whitespace())
-            }
-            Some(b) => {
-                if self.first {
-                    self.first = false;
-                    Some(b)
-                } else {
-                    return Err(self.de.peek_error(ErrorCode::ExpectedObjectCommaOrEnd));
-                }
-            }
+            Some(b) => Some(b),
             None => {
                 return Err(self.de.peek_error(ErrorCode::EofWhileParsingObject));
             }
@@ -1715,6 +1700,7 @@ impl<'de, 'a, R: Read<'de> + 'a> de::MapAccess<'de> for MapAccess<'a, R> {
 
         match peek {
             Some(b'"') => seed.deserialize(MapKey { de: &mut *self.de }).map(Some),
+            // return "we're done"
             Some(b'}') => Err(self.de.peek_error(ErrorCode::TrailingComma)),
             Some(_) => Err(self.de.peek_error(ErrorCode::KeyMustBeAString)),
             None => Err(self.de.peek_error(ErrorCode::EofWhileParsingValue)),
@@ -1970,7 +1956,7 @@ where
 /// use serde_edn::{Deserializer, Value};
 ///
 /// fn main() {
-///     let data = "{\"k\": 3}1\"cool\"\"stuff\" 3{}  [0, 1, 2]";
+///     let data = "{\"k\" 3}1\"cool\"\"stuff\" 3{}  [0, 1, 2]";
 ///
 ///     let stream = Deserializer::from_str(data).into_iter::<Value>();
 ///
@@ -2047,7 +2033,7 @@ where
     fn peek_end_of_value(&mut self) -> Result<()> {
         match try!(self.de.peek()) {
             Some(b' ') | Some(b'\n') | Some(b'\t') | Some(b'\r') | Some(b'"') | Some(b'[')
-            | Some(b']') | Some(b'{') | Some(b'}') | Some(b',') | Some(b':') | None => Ok(()),
+            | Some(b']') | Some(b'{') | Some(b'}') | Some(b',') |  None => Ok(()),
             Some(_) => {
                 let position = self.de.read.peek_position();
                 Err(Error::syntax(
@@ -2208,8 +2194,8 @@ where
 /// fn main() {
 ///     // The type of `j` is `&[u8]`
 ///     let j = b"{
-///                 \"fingerprint\": \"0xF9BA143B95FF6D82\",
-///                 \"location\": \"Menlo Park, CA\"
+///                 \"fingerprint\" \"0xF9BA143B95FF6D82\",
+///                 \"location\" \"Menlo Park, CA\"
 ///               }";
 ///
 ///     let u: User = serde_edn::from_slice(j).unwrap();
@@ -2253,8 +2239,8 @@ where
 /// fn main() {
 ///     // The type of `j` is `&str`
 ///     let j = "{
-///                \"fingerprint\": \"0xF9BA143B95FF6D82\",
-///                \"location\": \"Menlo Park, CA\"
+///                \"fingerprint\" \"0xF9BA143B95FF6D82\",
+///                \"location\" \"Menlo Park, CA\"
 ///              }";
 ///
 ///     let u: User = serde_edn::from_str(j).unwrap();
