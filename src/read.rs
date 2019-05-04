@@ -66,6 +66,13 @@ pub trait Read<'de>: private::Sealed {
     #[doc(hidden)]
     fn parse_str<'s>(&'s mut self, scratch: &'s mut Vec<u8>) -> Result<Reference<'de, 's, str>>;
 
+    /// Presumes valid symbol start sequence.
+    /// Returns the str until the next whitespace using the given scratch space if
+    /// necessary. The scratch space is initially empty.
+    #[doc(hidden)]
+    fn parse_symbol<'s>(&'s mut self, scratch: &'s mut Vec<u8>) -> Result<Reference<'de, 's, str>>;
+    fn parse_keyword<'s>(&'s mut self, scratch: &'s mut Vec<u8>) -> Result<Reference<'de, 's, str>>;
+
     /// Assumes the previous byte was a quotation mark. Parses a edn-escaped
     /// string until the next quotation mark using the given scratch space if
     /// necessary. The scratch space is initially empty.
@@ -227,6 +234,35 @@ where
             }
         }
     }
+
+    fn parse_symbol_bytes<'s, T, F>(
+        &'s mut self,
+        scratch: &'s mut Vec<u8>,
+        validate: bool,
+        result: F,
+    ) -> Result<T>
+        where
+            T: 's,
+            F: FnOnce(&'s Self, &'s [u8]) -> Result<T>,
+    {
+        loop {
+            let ch = try!(next_or_eof(self));
+            if VALID_SYMBOL_BYTE[ch as usize]  {
+                scratch.push(ch);
+                continue;
+            }
+            match ch {
+                b' ' | b'\n' | b'\r' | b'\t' | b',' => {
+                    return result(self,scratch)
+                }
+
+                _ => {
+                    // todo. ErrorCode::InvalidSymbol (though this will be called by keyword parse fns)
+                    return error(self,ErrorCode::InvalidKeyword)
+                }
+            }
+        }
+    }
 }
 
 impl<'de, R> Read<'de> for IoRead<R>
@@ -310,6 +346,17 @@ where
             None => self.iter.byte_offset(),
         }
     }
+
+    fn parse_symbol<'s>(&'s mut self, scratch: &'s mut Vec<u8>) -> Result<Reference<'de, 's, str>> {
+        self.parse_symbol_bytes(scratch, false, as_str)
+            .map(Reference::Copied)
+    }
+
+    fn parse_keyword<'s>(&'s mut self, scratch: &'s mut Vec<u8>) -> Result<Reference<'de, 's, str>> {
+        self.parse_symbol_bytes(scratch, false, as_str)
+            .map(Reference::Copied)
+    }
+
 
     fn parse_str<'s>(&'s mut self, scratch: &'s mut Vec<u8>) -> Result<Reference<'de, 's, str>> {
         self.parse_str_bytes(scratch, true, as_str)
@@ -411,6 +458,60 @@ impl<'a> SliceRead<'a> {
             }
         }
         position
+    }
+
+
+    /// The big optimization here over IoRead is that if the string contains no
+    /// backslash escape sequences, the returned &str is a slice of the raw edn
+    /// data so we avoid copying into the scratch space.
+    fn parse_symbol_bytes<'s, T: ?Sized, F>(
+        &'s mut self,
+        scratch: &'s mut Vec<u8>,
+        validate: bool,
+        result: F,
+    ) -> Result<Reference<'a, 's, T>>
+        where
+            T: 's,
+            F: for<'f> FnOnce(&'s Self, &'f [u8]) -> Result<&'f T>,
+    {
+        // Index of the first byte not yet copied into the scratch space.
+        let mut start = self.index;
+
+        loop {
+            while self.index < self.slice.len() && VALID_SYMBOL_BYTE[self.slice[self.index] as usize] {
+                self.index += 1;
+            }
+            // symbol or keyword can terminate in EOF or whitespace
+            if self.index == self.slice.len() {
+//                return error(self, ErrorCode::EofWhileParsingString);
+                // Fast path: return a slice of the raw edn without any
+                // copying.
+                let borrowed = &self.slice[start..self.index];
+                self.index += 1;
+                return result(self, borrowed).map(Reference::Borrowed);
+            }
+            match self.slice[self.index] {
+                // did we iterate until whitespace?
+                b' ' | b'\n' | b'\r' | b'\t' |  b',' => {
+                    if scratch.is_empty() {
+                        // Fast path: return a slice of the raw edn without any
+                        // copying.
+                        let borrowed = &self.slice[start..self.index];
+                        self.index += 1;
+                        return result(self, borrowed).map(Reference::Borrowed);
+                    } else {
+                        //  todo. expect scratch to be empty always because we don't deal with escape sequences,
+                        // remove the check once this appears to be the case
+                        unreachable!();
+                    }
+                }
+                // iterated until invalid symbol character
+                _ => {
+                    // todo. invalid symbol
+                    return error(self, ErrorCode::InvalidKeyword)
+                }
+            }
+        }
     }
 
     /// The big optimization here over IoRead is that if the string contains no
@@ -515,6 +616,14 @@ impl<'a> Read<'a> for SliceRead<'a> {
 
     fn parse_str<'s>(&'s mut self, scratch: &'s mut Vec<u8>) -> Result<Reference<'a, 's, str>> {
         self.parse_str_bytes(scratch, true, as_str)
+    }
+
+    fn parse_symbol<'s>(&'s mut self, scratch: &'s mut Vec<u8>) -> Result<Reference<'a, 's, str>> {
+        self.parse_symbol_bytes(scratch, true, as_str)
+    }
+
+    fn parse_keyword<'s>(&'s mut self, scratch: &'s mut Vec<u8>) -> Result<Reference<'a, 's, str>> {
+        self.parse_symbol_bytes(scratch, true, as_str)
     }
 
     fn parse_str_raw<'s>(
@@ -645,6 +754,24 @@ impl<'a> Read<'a> for StrRead<'a> {
         })
     }
 
+    fn parse_symbol<'s>(&'s mut self, scratch: &'s mut Vec<u8>) -> Result<Reference<'a, 's, str>> {
+        self.delegate.parse_symbol_bytes(scratch, true, |_, bytes| {
+            // The input is assumed to be valid UTF-8 and the \u-escapes are
+            // checked along the way, so don't need to check here.
+            // todo.
+            Ok(unsafe { str::from_utf8_unchecked(bytes) })
+        })
+    }
+
+    fn parse_keyword<'s>(&'s mut self, scratch: &'s mut Vec<u8>) -> Result<Reference<'a, 's, str>> {
+        self.delegate.parse_symbol_bytes(scratch, true, |_, bytes| {
+            // The input is assumed to be valid UTF-8 and the \u-escapes are
+            // checked along the way, so don't need to check here.
+            // todo.
+            Ok(unsafe { str::from_utf8_unchecked(bytes) })
+        })
+    }
+
     fn parse_str_raw<'s>(
         &'s mut self,
         scratch: &'s mut Vec<u8>,
@@ -706,6 +833,51 @@ static ESCAPE: [bool; 256] = {
         __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // F
     ]
 };
+// Lookup table of bytes that are allowed in symbols. A value of true at index i means
+// that byte i is valid.
+// Only for symbol body once start sequence validation complete
+// any whitespace is invalid
+static VALID_SYMBOL_BYTE: [bool; 256] = {
+    // . * + ! - _ ? $ % & = < > [A-Z] [a-z] [0-9]
+    const ST: bool = true; //  star \x2A
+    const PD: bool = true; //  period \x2E
+    const PL: bool = true; //  plus \x2B
+    const BG: bool = true; // bang \x21
+    const MI: bool = true; // minus \x2D
+    const UN: bool = true; // underscore \x5F
+    const QM: bool = true; // question mark \x3F
+    const DL: bool = true; // dollar sign \x24
+    const PC: bool = true; // percent \x25
+    const AM: bool = true; // ampersand \x26
+    const EQ: bool = true; // equals \x3D
+    const LT: bool = true; // less than \x3C
+    const GT: bool = true; // greater than \x3E
+    const AU: bool = true; // alpha upper \x41 - \x5A
+    const AL: bool = true; // alpha lower \x61 - \x7A
+    const NU: bool = true; // number \x30 - \x39
+
+    const __ : bool = false; // invalid
+    [
+        //   1   2   3   4   5   6   7   8   9   A   B   C   D   E   F
+        __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 0
+        __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 1
+        __, BG, __, __, DL, PC, AM, __, __, __, ST, PL, __, MI, PD, __, // 2
+        __, __, __, __, __, __, __, __, __, __, __, __, LT, EQ, GT, QM, // 3
+        __, AU, AU, AU, AU, AU, AU, AU, AU, AU, AU, AU, AU, AU, AU, AU, // 4
+        AU, AU, AU, AU, AU, AU, AU, AU, AU, AU, AU, __, __, __, __, UN, // 5
+        __, AL, AL, AL, AL, AL, AL, AL, AL, AL, AL, AL, AL, AL, AL, AL, // 6
+        AL, AL, AL, AL, AL, AL, AL, AL, AL, AL, AL, __, __, __, __, __, // 7
+        __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 8
+        __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 9
+        __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // A
+        __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // B
+        __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // C
+        __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // D
+        __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // E
+        __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // F
+    ]
+};
+
 
 fn next_or_eof<'de, R: ?Sized + Read<'de>>(read: &mut R) -> Result<u8> {
     match try!(read.next()) {

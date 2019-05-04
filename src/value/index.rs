@@ -162,6 +162,8 @@ impl<'a> fmt::Display for Type<'a> {
             Value::String(_) => formatter.write_str("string"),
             Value::Vector(_) => formatter.write_str("vector"),
             Value::Object(_) => formatter.write_str("object"),
+            Value::Keyword(_) => formatter.write_str("keyword"),
+            Value::Symbol(_) => formatter.write_str("symbol"),
         }
     }
 }

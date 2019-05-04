@@ -338,7 +338,7 @@
     // we support older compilers
     redundant_field_names,
 ))]
-#![deny(missing_docs)]
+//#![deny(missing_docs)]
 
 #[macro_use]
 extern crate serde;
@@ -356,7 +356,7 @@ pub use self::ser::{
     to_string, to_string_pretty, to_vec, to_vec_pretty, to_writer, to_writer_pretty, Serializer,
 };
 #[doc(inline)]
-pub use self::value::{from_value, to_value, Map, Number, Value};
+pub use self::value::{from_value, to_value, Map, Number, Value,Keyword};
 
 // We only use our own error type; no need for From conversions provided by the
 // standard library's try! macro. This reduces lines of LLVM IR by 4%.
@@ -377,10 +377,13 @@ pub mod error;
 pub mod map;
 pub mod ser;
 pub mod value;
+pub mod visitor;
 
 mod iter;
 mod number;
 mod read;
+mod symbol;
+mod keyword;
 
 #[cfg(feature = "raw_value")]
 mod raw;

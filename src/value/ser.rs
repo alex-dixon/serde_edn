@@ -35,6 +35,8 @@ impl Serialize for Value {
                 }
                 map.end()
             }
+            Value::Keyword(ref kw) => kw.serialize(serializer),
+            Value::Symbol(ref sym) => sym.serialize(serializer)
         }
     }
 }

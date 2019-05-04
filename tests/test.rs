@@ -41,7 +41,7 @@ use serde_bytes::{ByteBuf, Bytes};
 
 use serde_edn::{
     from_reader, from_slice, from_str, from_value, to_string, to_string_pretty, to_value, to_vec,
-    to_writer, Deserializer, Number, Value,
+    to_writer, Deserializer, Number, Value, Keyword
 };
 
 macro_rules! treemap {
@@ -1264,6 +1264,13 @@ fn test_parse_enum_errors() {
 //             "trailing comma at line 1 column 34"),
         ],
     );
+}
+#[test]
+fn test_parse_keyword() {
+    let v = Value::from_str(":foo").unwrap();
+    println!("from str value {:?}",v);
+    println!("Keyword from str {:?}",Keyword::from_str("foo"));
+    assert_eq!(v,Value::Keyword(Keyword::from_str("fo").unwrap()));
 }
 
 #[test]

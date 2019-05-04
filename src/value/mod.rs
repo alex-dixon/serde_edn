@@ -125,6 +125,8 @@ pub use raw::RawValue;
 pub use self::index::Index;
 
 use self::ser::Serializer;
+pub use symbol::Symbol;
+pub use keyword::Keyword;
 
 /// Represents any valid edn value.
 ///
@@ -191,7 +193,7 @@ pub enum Value {
     /// ```
     Vector(Vec<Value>),
 
-    /// Represents a edn object.
+    /// Represents an edn map.
     ///
     /// By default the map is backed by a BTreeMap. Enable the `preserve_order`
     /// feature of serde_edn to use IndexMap instead, which preserves
@@ -208,6 +210,17 @@ pub enum Value {
     /// # }
     /// ```
     Object(Map<String, Value>),
+    /// ```rust
+    /// # #[macro_use]
+    /// # extern crate serde_edn;
+    /// #
+    /// # fn main() {
+    /// let v = edn!(":somekeyword");
+    /// # }
+    /// ```
+    Keyword(Keyword),
+//    Keyword2(String),
+    Symbol(Symbol),
 }
 
 impl Debug for Value {
@@ -219,6 +232,9 @@ impl Debug for Value {
             Value::String(ref v) => formatter.debug_tuple("String").field(v).finish(),
             Value::Vector(ref v) => formatter.debug_tuple("Vector").field(v).finish(),
             Value::Object(ref v) => formatter.debug_tuple("Object").field(v).finish(),
+            Value::Keyword(ref v) => formatter.debug_tuple("Keyword").field(v).finish(),
+//            Value::Keyword2(ref v) => formatter.debug_tuple("Keyword2").field(v).finish(),
+            Value::Symbol(ref v) => formatter.debug_tuple("symbol").field(v).finish()
         }
     }
 }
@@ -555,6 +571,17 @@ impl Value {
     pub fn as_str(&self) -> Option<&str> {
         match *self {
             Value::String(ref s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn is_keyword(&self) -> bool {
+        self.as_keyword().is_some()
+    }
+
+    pub fn as_keyword(&self) -> Option<&str> {
+        match *self {
+            Value::Keyword(ref s) => Some(&s.value),
             _ => None,
         }
     }

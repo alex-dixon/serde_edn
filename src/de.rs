@@ -25,6 +25,9 @@ pub use read::{IoRead, Read, SliceRead, StrRead};
 use number::Number;
 #[cfg(feature = "arbitrary_precision")]
 use number::NumberDeserializer;
+//use keyword::{Keyword, KeywordDeserializer};
+use keyword::{Keyword, KeywordDeserializer};
+use Value;
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -941,6 +944,36 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         self.ignore_value()?;
         self.read.end_raw_buffering(visitor)
     }
+    // todo. do we call visit after this or return from here?
+    // visitor may require head to stay put or be put back
+//    fn parse_str<'s>(&'s mut self, scratch: &'s mut Vec<u8>) -> Result<Reference<'de, 's, str>>;
+
+    // todo. thinking this should return a Reference::Copied/borrowed
+//    fn parse_keyword(&mut self, scratch: &mut Vec<u8>) -> Result<Keyword> {
+//        match try!(self.next_char()) {
+//            // start sequence :: | :/ | :[0-9] is invalid
+//            Some(b':') | Some(b'/') | Some(b'0'...b'9') => {
+//                return Err(self.peek_error(ErrorCode::InvalidKeyword))
+//            },
+//            c1 @ Some(b'-') | c1@ Some(b'+') | c1 @ Some(b'.') => {
+//                // second char after - | + | .
+//                match try!(self.peek()) {
+//                    Some(b'0'...b'9') => return Err(self.peek_error(ErrorCode::InvalidKeyword)),
+//                    // TODO. if whitespace then c1
+//                    Some(b' ') |  Some(b'\n') |  Some(b'\r') | Some(b'\t') => Ok(()),
+//                    Some(_)=> {
+//                        Ok(self.read.parse_symbol(&mut self.scratch))
+//                    }
+//
+//                    None => {}
+//                }
+//                return Ok(Reference)
+//
+//            }
+//            Some(c) => Ok(())
+//        }
+//    }
+
 }
 
 impl FromStr for Number {
@@ -1014,6 +1047,7 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
         };
 
         let value = match peek {
+            // todo. need to look for idents + whitespace once parsing symbols
             b'n' => {
                 self.eat_char();
                 try!(self.parse_ident(b"il"));
@@ -1032,6 +1066,30 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
             b'-' => {
                 self.eat_char();
                 try!(self.parse_any_number(false)).visit(visitor)
+            }
+            b':'  => {
+                self.eat_char();
+                self.scratch.clear();
+                match try!(self.read.parse_keyword(&mut self.scratch)) {
+                    Reference::Borrowed(s) => {
+
+                        println!("Some log");
+                        visitor.visit_map(KeywordDeserializer {
+                            value: s
+                        })
+
+//                        visitor.visit_str(s)
+//                        visitor.visit_borrowed_str(s)
+//                        Ok(Value::Keyword(Keyword::from_str(s).unwrap()))
+//                        Ok(Keyword::from_str(s).unwrap().deserialize())
+                    },
+                    Reference::Copied(s) => {
+                        visitor.visit_str(s)
+//                        Ok(Value::Keyword(Keyword::from_str(s).unwrap()))
+//                        Ok(V::Keyword(Keyword::from_str(s).unwrap()))
+//                        visitor.visit_str(s)
+                    },
+                }
             }
             b'0'...b'9' => try!(self.parse_any_number(true)).visit(visitor),
             b'"' => {
