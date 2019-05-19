@@ -244,6 +244,8 @@ impl serde::Serializer for Serializer {
         len: usize,
     ) -> Result<Self::SerializeStruct, Error> {
         match name {
+            // todo?
+//            ::keyword::TOKEN => Ok(SerializeMap::Keyword {out_value:  None}),
             #[cfg(feature = "arbitrary_precision")]
             ::number::TOKEN => Ok(SerializeMap::Number { out_value: None }),
             #[cfg(feature = "raw_value")]

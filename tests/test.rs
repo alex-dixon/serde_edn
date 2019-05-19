@@ -1268,9 +1268,8 @@ fn test_parse_enum_errors() {
 #[test]
 fn test_parse_keyword() {
     let v = Value::from_str(":foo").unwrap();
-    println!("from str value {:?}",v);
-    println!("Keyword from str {:?}",Keyword::from_str("foo"));
-    assert_eq!(v,Value::Keyword(Keyword::from_str("fo").unwrap()));
+    assert_eq!(v, Value::Keyword(Keyword::from_str("foo").unwrap()));
+    assert_eq!(format!("{}", v), ":foo")
 }
 
 #[test]

@@ -428,6 +428,7 @@ where
     #[inline]
     fn serialize_struct(self, name: &'static str, len: usize) -> Result<Self::SerializeStruct> {
         match name {
+            ::keyword::TOKEN => Ok(Compound::Keyword {ser:self}),
             #[cfg(feature = "arbitrary_precision")]
             ::number::TOKEN => Ok(Compound::Number { ser: self }),
             #[cfg(feature = "raw_value")]
@@ -538,6 +539,8 @@ pub enum Compound<'a, W: 'a, F: 'a> {
     Number { ser: &'a mut Serializer<W, F> },
     #[cfg(feature = "raw_value")]
     RawValue { ser: &'a mut Serializer<W, F> },
+
+    Keyword { ser: &'a mut Serializer<W, F> },
 }
 
 impl<'a, W, F> ser::SerializeSeq for Compound<'a, W, F>
@@ -574,6 +577,7 @@ where
             Compound::Number { .. } => unreachable!(),
             #[cfg(feature = "raw_value")]
             Compound::RawValue { .. } => unreachable!(),
+            Compound::Keyword { .. } => unreachable!(),
         }
     }
 
@@ -591,6 +595,7 @@ where
             Compound::Number { .. } => unreachable!(),
             #[cfg(feature = "raw_value")]
             Compound::RawValue { .. } => unreachable!(),
+            Compound::Keyword { .. } => unreachable!(),
         }
     }
 }
@@ -674,6 +679,7 @@ where
             Compound::Number { .. } => unreachable!(),
             #[cfg(feature = "raw_value")]
             Compound::RawValue { .. } => unreachable!(),
+            Compound::Keyword { .. } => unreachable!(),
         }
     }
 }
@@ -714,6 +720,7 @@ where
             Compound::Number { .. } => unreachable!(),
             #[cfg(feature = "raw_value")]
             Compound::RawValue { .. } => unreachable!(),
+            Compound::Keyword { .. } => unreachable!(),
         }
     }
 
@@ -739,6 +746,7 @@ where
             Compound::Number { .. } => unreachable!(),
             #[cfg(feature = "raw_value")]
             Compound::RawValue { .. } => unreachable!(),
+            Compound::Keyword { .. } => unreachable!(),
         }
     }
 
@@ -756,6 +764,7 @@ where
             Compound::Number { .. } => unreachable!(),
             #[cfg(feature = "raw_value")]
             Compound::RawValue { .. } => unreachable!(),
+            Compound::Keyword { .. } => unreachable!(),
         }
     }
 }
@@ -796,6 +805,15 @@ where
                     Err(invalid_raw_value())
                 }
             }
+
+            Compound::Keyword { ref mut ser, .. } => {
+                if key == ::keyword::TOKEN {
+                    try!(value.serialize(KeywordStrEmitter(&mut *ser)));
+                    Ok(())
+                } else {
+                    Err(invalid_keyword())
+                }
+            }
         }
     }
 
@@ -807,6 +825,7 @@ where
             Compound::Number { .. } => Ok(()),
             #[cfg(feature = "raw_value")]
             Compound::RawValue { .. } => Ok(()),
+            Compound::Keyword { .. } => Ok(())
         }
     }
 }
@@ -830,6 +849,7 @@ where
             Compound::Number { .. } => unreachable!(),
             #[cfg(feature = "raw_value")]
             Compound::RawValue { .. } => unreachable!(),
+            Compound::Keyword { .. } => unreachable!(),
         }
     }
 
@@ -852,6 +872,7 @@ where
             Compound::Number { .. } => unreachable!(),
             #[cfg(feature = "raw_value")]
             Compound::RawValue { .. } => unreachable!(),
+            Compound::Keyword { .. } => unreachable!(),
         }
     }
 }
@@ -872,6 +893,10 @@ fn invalid_raw_value() -> Error {
 
 fn key_must_be_a_string() -> Error {
     Error::syntax(ErrorCode::KeyMustBeAString, 0, 0)
+}
+
+fn invalid_keyword() -> Error {
+    Error::syntax(ErrorCode::InvalidKeyword, 0, 0)
 }
 
 impl<'a, W, F> ser::Serializer for MapKeySerializer<'a, W, F>
@@ -1365,6 +1390,189 @@ impl<'a, W: io::Write, F: Formatter> ser::Serializer for NumberStrEmitter<'a, W,
     }
 }
 
+struct KeywordStrEmitter<'a, W: 'a + io::Write, F: 'a + Formatter>(&'a mut Serializer<W, F>);
+
+impl<'a, W: io::Write, F: Formatter> ser::Serializer for KeywordStrEmitter<'a, W, F> {
+    type Ok = ();
+    type Error = Error;
+
+    type SerializeSeq = Impossible<(), Error>;
+    type SerializeTuple = Impossible<(), Error>;
+    type SerializeTupleStruct = Impossible<(), Error>;
+    type SerializeTupleVariant = Impossible<(), Error>;
+    type SerializeMap = Impossible<(), Error>;
+    type SerializeStruct = Impossible<(), Error>;
+    type SerializeStructVariant = Impossible<(), Error>;
+
+    fn serialize_bool(self, _v: bool) -> Result<Self::Ok> {
+        Err(invalid_keyword())
+    }
+
+    fn serialize_i8(self, _v: i8) -> Result<Self::Ok> {
+        Err(invalid_keyword())
+    }
+
+    fn serialize_i16(self, _v: i16) -> Result<Self::Ok> {
+        Err(invalid_keyword())
+    }
+
+    fn serialize_i32(self, _v: i32) -> Result<Self::Ok> {
+        Err(invalid_keyword())
+    }
+
+    fn serialize_i64(self, _v: i64) -> Result<Self::Ok> {
+        Err(invalid_keyword())
+    }
+
+    serde_if_integer128! {
+        fn serialize_i128(self, _v: i128) -> Result<Self::Ok> {
+            Err(invalid_keyword())
+        }
+    }
+
+    fn serialize_u8(self, _v: u8) -> Result<Self::Ok> {
+        Err(invalid_keyword())
+    }
+
+    fn serialize_u16(self, _v: u16) -> Result<Self::Ok> {
+        Err(invalid_keyword())
+    }
+
+    fn serialize_u32(self, _v: u32) -> Result<Self::Ok> {
+        Err(invalid_keyword())
+    }
+
+    fn serialize_u64(self, _v: u64) -> Result<Self::Ok> {
+        Err(invalid_keyword())
+    }
+
+    serde_if_integer128! {
+        fn serialize_u128(self, _v: u128) -> Result<Self::Ok> {
+            Err(invalid_keyword())
+        }
+    }
+
+    fn serialize_f32(self, _v: f32) -> Result<Self::Ok> {
+        Err(invalid_keyword())
+    }
+
+    fn serialize_f64(self, _v: f64) -> Result<Self::Ok> {
+        Err(invalid_keyword())
+    }
+
+    fn serialize_char(self, _v: char) -> Result<Self::Ok> {
+        Err(invalid_keyword())
+    }
+
+    fn serialize_str(self, value: &str) -> Result<Self::Ok> {
+        let KeywordStrEmitter(serializer) = self;
+        serializer
+            .formatter
+            .write_keyword_str(&mut serializer.writer, value)
+            .map_err(Error::io)
+    }
+
+    fn serialize_bytes(self, _value: &[u8]) -> Result<Self::Ok> {
+        Err(invalid_keyword())
+    }
+
+    fn serialize_none(self) -> Result<Self::Ok> {
+        Err(invalid_keyword())
+    }
+
+    fn serialize_some<T: ?Sized>(self, _value: &T) -> Result<Self::Ok>
+        where
+            T: Serialize,
+    {
+        Err(invalid_keyword())
+    }
+
+    fn serialize_unit(self) -> Result<Self::Ok> {
+        Err(invalid_keyword())
+    }
+
+    fn serialize_unit_struct(self, _name: &'static str) -> Result<Self::Ok> {
+        Err(invalid_keyword())
+    }
+
+    fn serialize_unit_variant(
+        self,
+        _name: &'static str,
+        _variant_index: u32,
+        _variant: &'static str,
+    ) -> Result<Self::Ok> {
+        Err(invalid_keyword())
+    }
+
+    fn serialize_newtype_struct<T: ?Sized>(
+        self,
+        _name: &'static str,
+        _value: &T,
+    ) -> Result<Self::Ok>
+        where
+            T: Serialize,
+    {
+        Err(invalid_keyword())
+    }
+
+    fn serialize_newtype_variant<T: ?Sized>(
+        self,
+        _name: &'static str,
+        _variant_index: u32,
+        _variant: &'static str,
+        _value: &T,
+    ) -> Result<Self::Ok>
+        where
+            T: Serialize,
+    {
+        Err(invalid_keyword())
+    }
+
+    fn serialize_seq(self, _len: Option<usize>) -> Result<Self::SerializeSeq> {
+        Err(invalid_keyword())
+    }
+
+    fn serialize_tuple(self, _len: usize) -> Result<Self::SerializeTuple> {
+        Err(invalid_keyword())
+    }
+
+    fn serialize_tuple_struct(
+        self,
+        _name: &'static str,
+        _len: usize,
+    ) -> Result<Self::SerializeTupleStruct> {
+        Err(invalid_keyword())
+    }
+
+    fn serialize_tuple_variant(
+        self,
+        _name: &'static str,
+        _variant_index: u32,
+        _variant: &'static str,
+        _len: usize,
+    ) -> Result<Self::SerializeTupleVariant> {
+        Err(invalid_keyword())
+    }
+
+    fn serialize_map(self, _len: Option<usize>) -> Result<Self::SerializeMap> {
+        Err(invalid_keyword())
+    }
+
+    fn serialize_struct(self, _name: &'static str, _len: usize) -> Result<Self::SerializeStruct> {
+        Err(invalid_keyword())
+    }
+
+    fn serialize_struct_variant(
+        self,
+        _name: &'static str,
+        _variant_index: u32,
+        _variant: &'static str,
+        _len: usize,
+    ) -> Result<Self::SerializeStructVariant> {
+        Err(invalid_keyword())
+    }
+}
+
 #[cfg(feature = "raw_value")]
 struct RawValueStrEmitter<'a, W: 'a + io::Write, F: 'a + Formatter>(&'a mut Serializer<W, F>);
 
@@ -1716,6 +1924,15 @@ pub trait Formatter {
     where
         W: io::Write,
     {
+        writer.write_all(value.as_bytes())
+    }
+    #[inline]
+    fn write_keyword_str<W: ?Sized>(&mut self, writer: &mut W, value: &str) -> io::Result<()>
+        where
+            W: io::Write,
+    {
+        // Display for Keyword adds colon
+//        writer.write_all(&[b':']);
         writer.write_all(value.as_bytes())
     }
 

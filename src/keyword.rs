@@ -6,24 +6,41 @@ use std::str::FromStr;
 
 #[derive(Clone, PartialEq)]
 pub struct Keyword {
-    pub value: String,
+    pub value: Option<String>,
 }
+
 pub const TOKEN: &'static str = "$serde_edn::private::KeywordHack";
+pub const FIELD: &'static str = "$__serde_edn_private_keyword";
+pub const NAME: &'static str = "$__serde_edn_private_Keyword";
 
 
 impl Keyword {
     #[inline]
-    pub fn from_str(s: &str) -> Option<Keyword> {
-        Some(Keyword { value: String::from(s) })
+    pub fn from_str(s: &str) -> Result<Keyword, Error> {
+        Ok(Keyword { value: Some(String::from(s)) })
     }
-//    fn visit<'de, V>(self, visitor: V) -> Result<V::Value>
-//        where
-//            V: de::Visitor<'de>,
-//    {
-//        match self {
-//            Keyword()
-//        }
-//    }
+}
+
+impl FromStr for Keyword {
+    type Err = Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Keyword { value: Some(String::from(s)) })
+    }
+}
+
+impl fmt::Display for Keyword {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        if let Some(ref value)  = self.value {
+            write!(formatter, ":{}", value)?;
+        }
+        Ok(())
+    }
+}
+
+impl Debug for Keyword {
+    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.debug_tuple("Keyword").field(&self.value).finish()
+    }
 }
 
 impl Serialize for Keyword {
@@ -31,11 +48,11 @@ impl Serialize for Keyword {
         where
             S: Serializer,
     {
-//        serializer.serialize_str(&self.value)
-        let mut kw = String::with_capacity(1 + self.value.len());
-        kw.push_str(":");
-        kw.push_str(&self.value);
-        serializer.serialize_str(&kw)
+        use serde::ser::SerializeStruct;
+
+        let mut s = serializer.serialize_struct(TOKEN, 1)?;
+        s.serialize_field(TOKEN, &self.to_string())?;
+        s.end()
     }
 }
 
@@ -47,92 +64,65 @@ impl<'de> Deserialize<'de> for Keyword {
     {
         struct KeywordVisitor;
 
-        impl<'de> Visitor<'de> for KeywordVisitor {
+        impl<'de> de::Visitor<'de> for KeywordVisitor {
             type Value = Keyword;
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter.write_str("a keyword")
+                formatter.write_str("an edn keyword")
             }
 
-            #[inline]
-            fn visit_str<E>(self, value: &str) -> Result<Keyword, E>
+            fn visit_map<V>(self, mut visitor: V) -> Result<Keyword, V::Error>
                 where
-                    E: de::Error,
+                    V: de::MapAccess<'de>,
             {
-                println!("KeywordVisitor: visit-str");
-                Keyword::from_str(value).ok_or_else(|| de::Error::custom("not a keyword"))
-            }
-
-            #[inline]
-            #[cfg(any(feature = "std", feature = "alloc"))]
-            fn visit_string<E>(self, value: String) -> Result<Keyword, E>
-                where
-                    E: de::Error,
-            {
-                self.visit_str(&value)
+                let value = visitor.next_key::<KeywordKey>()?;
+                if value.is_none() {
+                    return Err(de::Error::custom("keyword key not found"));
+                }
+                let v: KeywordFromString = visitor.next_value()?;
+                Ok(v.value)
             }
         }
 
-        deserializer.deserialize_any(KeywordVisitor)
+        static FIELDS: [&'static str; 1] = [FIELD];
+        deserializer.deserialize_struct(NAME, &FIELDS, KeywordVisitor)
     }
 }
 
-impl<'de> Deserializer<'de> for Keyword {
-    type Error = Error;
+struct KeywordKey;
 
-    #[inline]
-    fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Error>
+impl<'de> de::Deserialize<'de> for KeywordKey {
+    fn deserialize<D>(deserializer: D) -> Result<KeywordKey, D::Error>
         where
-            V: Visitor<'de>,
+            D: de::Deserializer<'de>,
     {
-        println!("deser any kw");
-        visitor.visit_string(self.value)
-    }
-    forward_to_deserialize_any! {
-        bool char str string bytes byte_buf option unit unit_struct
-        newtype_struct seq tuple tuple_struct map struct enum identifier
-        ignored_any
-        i8 i16 i32 i64
-        u8 u16 u32 u64
-        f32 f64
-    }
-}
+        struct FieldVisitor;
 
-//impl<'de, 'a> Deserializer<'de> for &'a Keyword {
-//    type Error = Error;
-//
-//    #[inline]
-//    fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Error>
-//        where
-//            V: Visitor<'de>,
-//    {
-//        visitor.visit_borrowed_str(&self.value.clone())
-//    }
-//    forward_to_deserialize_any! {
-//        bool char str string bytes byte_buf option unit unit_struct
-//        newtype_struct seq tuple tuple_struct map struct enum identifier
-//        ignored_any
-//        i8 i16 i32 i64
-//        u8 u16 u32 u64
-//        f32 f64
-//    }
-//}
+        impl<'de> de::Visitor<'de> for FieldVisitor {
+            type Value = ();
 
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("a valid keyword field")
+            }
 
-impl fmt::Display for Keyword {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-//        Display::fmt(&self.value, formatter)
-        write!(formatter, "{}", &self.value)
+            fn visit_str<E>(self, s: &str) -> Result<(), E>
+                where
+                    E: de::Error,
+            {
+                if s == FIELD {
+                    Ok(())
+                } else {
+                    Err(de::Error::custom("expected field with custom name"))
+                }
+            }
+        }
+
+        deserializer.deserialize_identifier(FieldVisitor)?;
+        Ok(KeywordKey)
     }
 }
 
-impl Debug for Keyword {
-    fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.debug_tuple("Keyword").field(&self.value).finish()
-    }
-}
 
-//fn visit()0
 // Not public API. Should be pub(crate).
 #[doc(hidden)]
 pub struct KeywordDeserializer<'de> {
@@ -181,13 +171,7 @@ impl<'de> Deserializer<'de> for KeywordFieldDeserializer {
     }
 }
 
-impl FromStr for Keyword {
-    type Err = Error;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Keyword{value:String::from(s)})
-    }
-}
 
 // does it ever end?
 pub struct KeywordFromString {
@@ -222,43 +206,3 @@ impl<'de> de::Deserialize<'de> for KeywordFromString {
         deserializer.deserialize_str(Visitor)
     }
 }
-
-//impl From<ParserNumber> for Number {
-//    fn from(value: ParserNumber) -> Self {
-//        let n = match value {
-//            ParserNumber::F64(f) => {
-//                #[cfg(not(feature = "arbitrary_precision"))]
-//                    {
-//                        N::Float(f)
-//                    }
-//                #[cfg(feature = "arbitrary_precision")]
-//                    {
-//                        f.to_string()
-//                    }
-//            }
-//            ParserNumber::U64(u) => {
-//                #[cfg(not(feature = "arbitrary_precision"))]
-//                    {
-//                        N::PosInt(u)
-//                    }
-//                #[cfg(feature = "arbitrary_precision")]
-//                    {
-//                        u.to_string()
-//                    }
-//            }
-//            ParserNumber::I64(i) => {
-//                #[cfg(not(feature = "arbitrary_precision"))]
-//                    {
-//                        N::NegInt(i)
-//                    }
-//                #[cfg(feature = "arbitrary_precision")]
-//                    {
-//                        i.to_string()
-//                    }
-//            }
-//            #[cfg(feature = "arbitrary_precision")]
-//            ParserNumber::String(s) => s,
-//        };
-//        Number { n: n }
-//    }
-//}

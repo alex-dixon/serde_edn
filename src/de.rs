@@ -1073,7 +1073,7 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
                 match try!(self.read.parse_keyword(&mut self.scratch)) {
                     Reference::Borrowed(s) => {
 
-                        println!("Some log");
+                        println!("saw `:`, parse keyword then visit map");
                         visitor.visit_map(KeywordDeserializer {
                             value: s
                         })
@@ -1084,7 +1084,12 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
 //                        Ok(Keyword::from_str(s).unwrap().deserialize())
                     },
                     Reference::Copied(s) => {
-                        visitor.visit_str(s)
+                        // Keywords are always Reference::Borrowed because no escape sequence
+                        // to deal with as was the case with strings
+                        unreachable!()
+
+//                        visitor.visit_str(s)
+
 //                        Ok(Value::Keyword(Keyword::from_str(s).unwrap()))
 //                        Ok(V::Keyword(Keyword::from_str(s).unwrap()))
 //                        visitor.visit_str(s)

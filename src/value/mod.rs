@@ -232,8 +232,7 @@ impl Debug for Value {
             Value::String(ref v) => formatter.debug_tuple("String").field(v).finish(),
             Value::Vector(ref v) => formatter.debug_tuple("Vector").field(v).finish(),
             Value::Object(ref v) => formatter.debug_tuple("Object").field(v).finish(),
-            Value::Keyword(ref v) => formatter.debug_tuple("Keyword").field(v).finish(),
-//            Value::Keyword2(ref v) => formatter.debug_tuple("Keyword2").field(v).finish(),
+            Value::Keyword(ref v) => Debug::fmt(v, formatter),
             Value::Symbol(ref v) => formatter.debug_tuple("symbol").field(v).finish()
         }
     }
@@ -579,9 +578,9 @@ impl Value {
         self.as_keyword().is_some()
     }
 
-    pub fn as_keyword(&self) -> Option<&str> {
+    pub fn as_keyword(&self) -> Option<&Keyword> {
         match *self {
-            Value::Keyword(ref s) => Some(&s.value),
+            Value::Keyword(ref s) => Some(s),
             _ => None,
         }
     }

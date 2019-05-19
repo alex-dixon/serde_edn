@@ -115,18 +115,8 @@ impl<'de> Deserialize<'de> for Value {
             {
                 match visitor.next_key_seed(KeyClassifier)? {
                     Some(KeyClass::KeywordHack) => {
-                        println!("keyword  hack handler");
                         let kw: KeywordFromString = visitor.next_value()?;
-                        return Ok(Value::Keyword(kw.value));
-
-
-
-
-                        // this works kind of but we have
-                        // the duplicate Keyword(Keyword nonsense
-
-//                        let kwstr: String = visitor.next_value()?;
-//                        Ok(Value::Keyword(Keyword { value: kwstr }))
+                        Ok(Value::Keyword(kw.value))
                     }
                     #[cfg(feature = "arbitrary_precision")]
                     Some(KeyClass::Number) => {
@@ -241,16 +231,10 @@ impl<'de> serde::Deserializer<'de> for Value {
             Value::String(v) => visitor.visit_string(v),
             Value::Vector(v) => visit_vector(v, visitor),
             Value::Object(v) => visit_object(v, visitor),
-            Value::Keyword(kw) => kw.deserialize_any(visitor),
-//            Value::Keyword2(kw) => {
-
-            // can't just return this because
-            // doesn't necessarily satisfy V
-            // no idea why  it looks a lot like we're doing
-            // something maximally simple or redundant (return a "me"
-            // if I'm a "me"...?
-//                Ok(Value::Keyword2(kw))
-//            },
+            Value::Keyword(kw) => {
+                println!("visit keyword to str...{:?}", kw.to_string());
+                visitor.visit_string(kw.to_string())
+            }
             Value::Symbol(v) => v.deserialize_any(visitor),
         }
     }
@@ -793,7 +777,19 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
             Value::String(ref v) => visitor.visit_borrowed_str(v),
             Value::Vector(ref v) => visit_vector_ref(v, visitor),
             Value::Object(ref v) => visit_object_ref(v, visitor),
-            Value::Keyword(ref kw) => visitor.visit_borrowed_str(&kw.value),
+            Value::Keyword(ref kw) => {
+                //todo. keyword ref  deserializer?
+                match kw.clone().value {
+                    None => Err(serde::de::Error::custom("keyword error")),
+                    Some(v) => {
+                        println!("keyword ref visit str");
+                        visitor.visit_str(&v)
+                    }
+                }
+
+//                kw.deserialize_any(visitor)
+//                visitor.visit_borrowed_str(&kw.value)
+            }
             Value::Symbol(ref sym) => visitor.visit_borrowed_str(&sym.value)
         }
     }
