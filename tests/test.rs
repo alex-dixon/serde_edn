@@ -1367,6 +1367,23 @@ fn test_parse_keyword() {
     println!("my nil {}", nil);
     assert_eq!(nil, Value::Nil);
 
+    let  mytrue  = Value::from_str("true").unwrap();
+    println!("my true {}", mytrue);
+    assert_eq!(mytrue, Value::Bool(true));
+
+    let  mynottrue  = Value::from_str("truenot").unwrap();
+    println!("my nottrue {}", mynottrue);
+    assert_eq!(mynottrue, Value::Symbol(Symbol::from_str("truenot").unwrap()));
+
+
+    let  myfalse  = Value::from_str("false").unwrap();
+    println!("my false {}", myfalse);
+    assert_eq!(myfalse, Value::Bool(false));
+
+    let  mynotfalse  = Value::from_str("falsenot").unwrap();
+    println!("my notfalse {}", mynotfalse);
+    assert_eq!(mynotfalse, Value::Symbol(Symbol::from_str("falsenot").unwrap()));
+
     let list  = Value::from_str("()");
     println!("my list {:?}", list);
 

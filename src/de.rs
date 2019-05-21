@@ -963,35 +963,6 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         self.ignore_value()?;
         self.read.end_raw_buffering(visitor)
     }
-    // todo. do we call visit after this or return from here?
-    // visitor may require head to stay put or be put back
-//    fn parse_str<'s>(&'s mut self, scratch: &'s mut Vec<u8>) -> Result<Reference<'de, 's, str>>;
-
-    // todo. thinking this should return a Reference::Copied/borrowed
-//    fn parse_keyword(&mut self, scratch: &mut Vec<u8>) -> Result<Keyword> {
-//        match try!(self.next_char()) {
-//            // start sequence :: | :/ | :[0-9] is invalid
-//            Some(b':') | Some(b'/') | Some(b'0'...b'9') => {
-//                return Err(self.peek_error(ErrorCode::InvalidKeyword))
-//            },
-//            c1 @ Some(b'-') | c1@ Some(b'+') | c1 @ Some(b'.') => {
-//                // second char after - | + | .
-//                match try!(self.peek()) {
-//                    Some(b'0'...b'9') => return Err(self.peek_error(ErrorCode::InvalidKeyword)),
-//                    // TODO. if whitespace then c1
-//                    Some(b' ') |  Some(b'\n') |  Some(b'\r') | Some(b'\t') => Ok(()),
-//                    Some(_)=> {
-//                        Ok(self.read.parse_symbol(&mut self.scratch))
-//                    }
-//
-//                    None => {}
-//                }
-//                return Ok(Reference)
-//
-//            }
-//            Some(c) => Ok(())
-//        }
-//    }
 }
 
 impl FromStr for Number {
@@ -1048,7 +1019,11 @@ macro_rules! deserialize_prim_number {
         }
     }
 }
-//fn visit_symbol(visitor:)
+
+pub enum ParseDecision {
+    Symbol,
+    Reserved
+}
 
 impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     type Error = Error;
@@ -1082,104 +1057,74 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
             // buffer can be fixed size, originated here
             b'n' => {
                 self.eat_char();
-
                 let reserved_len: usize = 3;
-                let reserved: [u8; 3] = [b'n', b'i', b'l'];
+                let reserved: [u8; 5] = [b'n', b'i', b'l', 0, 0];
                 let mut offset: usize = 1;
                 self.scratch.clear();
-//                self.read.parse_reserved_or_symbol(
-//                    &mut self.scratch,
-//                    offset,
-//
-//                );
-
-                loop {
-                    match try!(self.read.next()) {
-                        Some(b' ') | Some(b'\n') | Some(b'\t') | Some(b'\r') | Some(b',') => {
-                            self.scratch.extend_from_slice(&reserved[0..offset]);
-                            break match try!(self.read.parse_symbol_offset(&mut self.scratch, offset)) {
-                                Reference::Borrowed(s) => {
-                                    visitor.visit_map(SymbolDeserializer {
-                                        value: s
-                                    })
-                                }
-                                Reference::Copied(_) => unreachable!()
-                            };
-                        }
-                        Some(v) => {
-                            if v == reserved[offset] {
-                                offset += 1;
-
-                                if offset == reserved_len {
-                                    match try!(self.peek()) {
-                                        Some(b' ') | Some(b'\n') | Some(b'\t') | Some(b'\r') | Some(b',') => {
-                                            break visitor.visit_unit();
-                                        }
-                                        Some(v2) => {
-                                            self.scratch.extend_from_slice(&reserved[0..offset]);
-                                            break match try!(self.read.parse_symbol_offset(&mut self.scratch, offset)) {
-                                                Reference::Borrowed(s) => {
-                                                    visitor.visit_map(SymbolDeserializer {
-                                                        value: s
-                                                    })
-                                                }
-                                                Reference::Copied(_) => unreachable!()
-                                            };
-                                        }
-                                        // eof
-                                        None => {
-                                            break visitor.visit_unit();
-                                        }
-                                    }
-                                }
-                                // loop again because within reserved sequence but not at the end
-                                continue;
+                match try!(self.read.parse_reserved_or_symbol(
+                    &mut self.scratch,
+                    &mut offset,
+                    reserved_len,
+                    &reserved,
+                )) {
+                    ParseDecision::Reserved => visitor.visit_unit(),
+                    ParseDecision::Symbol => {
+                        match try!(self.read.parse_symbol_offset(&mut self.scratch, offset)) {
+                            Reference::Borrowed(s) => {
+                                visitor.visit_map(SymbolDeserializer {
+                                    value: s
+                                })
                             }
-
-                            // not a reserved word but matches the reserved word sequence
-                            // up until offset
-                            self.scratch.extend_from_slice(&reserved[0..offset]);
-                            self.scratch.extend_from_slice(&[v]);
-                            break match try!(self.read.parse_symbol_offset(&mut self.scratch, offset)) {
-                                Reference::Borrowed(s) => {
-                                    visitor.visit_map(SymbolDeserializer {
-                                        value: s
-                                    })
-                                }
-                                Reference::Copied(_) => unreachable!()
-                            };
-                        }
-
-                        // eof
-                        None => {
-                            if offset == reserved_len {
-                                break visitor.visit_unit();
-                            }
-                            // not a reserved thing but matches the reserved word sequence
-                            // up until offset
-                            self.scratch.extend_from_slice(&reserved[0..offset]);
-//                            self.scratch.extend_from_slice(&[v]);
-                            break match try!(self.read.parse_symbol_offset(&mut self.scratch, offset)) {
-                                Reference::Borrowed(s) => {
-                                    visitor.visit_map(SymbolDeserializer {
-                                        value: s
-                                    })
-                                }
-                                Reference::Copied(_) => unreachable!()
-                            };
+                            Reference::Copied(_) => unreachable!()
                         }
                     }
                 }
             }
             b't' => {
                 self.eat_char();
-                try!(self.parse_ident(b"rue"));
-                visitor.visit_bool(true)
+                let reserved_len: usize = 4;
+                let reserved: [u8; 5] = [b't', b'r', b'u', b'e', 0];
+                let mut offset: usize = 1;
+                self.scratch.clear();
+                match try!(self.read.parse_reserved_or_symbol(
+                    &mut self.scratch,
+                    &mut offset,
+                    reserved_len,
+                    &reserved,
+                )) {
+                    ParseDecision::Reserved => visitor.visit_bool(true),
+                    ParseDecision::Symbol => match try!(self.read.parse_symbol_offset(&mut self.scratch, offset)) {
+                        Reference::Borrowed(s) => {
+                            visitor.visit_map(SymbolDeserializer {
+                                value: s
+                            })
+                        }
+                        Reference::Copied(_) => unreachable!()
+                    }
+                }
             }
             b'f' => {
                 self.eat_char();
-                try!(self.parse_ident(b"alse"));
-                visitor.visit_bool(false)
+                let reserved_len: usize = 5;
+                let reserved: [u8; 5] = [b'f', b'a', b'l', b's', b'e'];
+                let mut offset: usize = 1;
+                self.scratch.clear();
+                match try!(self.read.parse_reserved_or_symbol(
+                    &mut self.scratch,
+                    &mut offset,
+                    reserved_len,
+                    &reserved,
+                )) {
+                    ParseDecision::Reserved => visitor.visit_bool(false),
+                    ParseDecision::Symbol => match try!(self.read.parse_symbol_offset(&mut self.scratch, offset)) {
+                        Reference::Borrowed(s) => {
+                            visitor.visit_map(SymbolDeserializer {
+                                value: s
+                            })
+                        }
+                        Reference::Copied(_) => unreachable!()
+                    }
+                }
             }
             b'-' => {
                 self.eat_char();
@@ -1193,22 +1138,11 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
                         visitor.visit_map(KeywordDeserializer {
                             value: s
                         })
-
-//                        visitor.visit_str(s)
-//                        visitor.visit_borrowed_str(s)
-//                        Ok(Value::Keyword(Keyword::from_str(s).unwrap()))
-//                        Ok(Keyword::from_str(s).unwrap().deserialize())
                     }
                     Reference::Copied(s) => {
                         // Keywords are always Reference::Borrowed because no escape sequence
                         // to deal with as was the case with strings
                         unreachable!()
-
-//                        visitor.visit_str(s)
-
-//                        Ok(Value::Keyword(Keyword::from_str(s).unwrap()))
-//                        Ok(V::Keyword(Keyword::from_str(s).unwrap()))
-//                        visitor.visit_str(s)
                     }
                 }
             }
