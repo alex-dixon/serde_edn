@@ -26,6 +26,7 @@ impl Serialize for Value {
             Value::Number(ref n) => n.serialize(serializer),
             Value::String(ref s) => serializer.serialize_str(s),
             Value::Vector(ref v) => v.serialize(serializer),
+            Value::List(ref v) => v.serialize(serializer),
             Value::Object(ref m) => {
                 use serde::ser::SerializeMap;
                 let mut map = try!(serializer.serialize_map(Some(m.len())));

@@ -23,7 +23,7 @@ extern crate serde_edn;
 #[macro_use]
 mod macros;
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::fmt::{self, Debug};
 use std::io;
 use std::iter;
@@ -41,7 +41,7 @@ use serde_bytes::{ByteBuf, Bytes};
 
 use serde_edn::{
     from_reader, from_slice, from_str, from_value, to_string, to_string_pretty, to_value, to_vec,
-    to_writer, Deserializer, Number, Value, Keyword
+    to_writer, Deserializer, Number, Value, Keyword,
 };
 use serde_edn::value::Symbol;
 
@@ -82,8 +82,8 @@ struct Outer {
 }
 
 fn test_encode_ok<T>(errors: &[(T, &str)])
-where
-    T: PartialEq + Debug + ser::Serialize,
+    where
+        T: PartialEq + Debug + ser::Serialize,
 {
     for &(ref value, out) in errors {
         let out = out.to_string();
@@ -98,13 +98,13 @@ where
 }
 
 fn test_pretty_encode_ok<T>(errors: &[(T, &str)])
-where
-    T: PartialEq + Debug + ser::Serialize,
+    where
+        T: PartialEq + Debug + ser::Serialize,
 {
     // todo. expectations are against pretty_str! macro
     // we may never get that to work because commas.
     // maybe just type out the pretty strings
-    return
+    return;
 //    for &(ref value, out) in errors {
 //        let out = out.to_string();
 //
@@ -470,9 +470,9 @@ fn test_write_object() {
 
 #[test]
 fn test_write_tuple() {
-    test_encode_ok(&[((5,), "[5]")]);
+    test_encode_ok(&[((5, ), "[5]")]);
 
-    test_pretty_encode_ok(&[((5,), pretty_str!([5]))]);
+    test_pretty_encode_ok(&[((5, ), pretty_str!([5]))]);
 
     test_encode_ok(&[((5, (6, "abc")), "[5 [6 \"abc\"]]")]);
 
@@ -587,8 +587,8 @@ fn test_deserialize_number_to_untagged_enum() {
 }
 
 fn test_parse_ok<T>(tests: Vec<(&str, T)>)
-where
-    T: Clone + Debug + PartialEq + ser::Serialize + de::DeserializeOwned,
+    where
+        T: Clone + Debug + PartialEq + ser::Serialize + de::DeserializeOwned,
 {
     for (s, value) in tests {
         let v: T = from_str(s).unwrap();
@@ -636,8 +636,8 @@ where
 // For testing representations that the deserializer accepts but the serializer
 // never generates. These do not survive a round-trip through Value.
 fn test_parse_unusual_ok<T>(tests: Vec<(&str, T)>)
-where
-    T: Clone + Debug + PartialEq + ser::Serialize + de::DeserializeOwned,
+    where
+        T: Clone + Debug + PartialEq + ser::Serialize + de::DeserializeOwned,
 {
     for (s, value) in tests {
         let v: T = from_str(s).unwrap();
@@ -656,8 +656,8 @@ macro_rules! test_parse_err {
 }
 
 fn test_parse_err<T>(errors: &[(&str, &'static str)])
-where
-    T: Debug + PartialEq + de::DeserializeOwned,
+    where
+        T: Debug + PartialEq + de::DeserializeOwned,
 {
     for &(s, err) in errors {
         test_parse_err!(from_str::<T>(s) => err);
@@ -666,8 +666,8 @@ where
 }
 
 fn test_parse_slice_err<T>(errors: &[(&[u8], &'static str)])
-where
-    T: Debug + PartialEq + de::DeserializeOwned,
+    where
+        T: Debug + PartialEq + de::DeserializeOwned,
 {
     for &(s, err) in errors {
         test_parse_err!(from_slice::<T>(s) => err);
@@ -675,9 +675,9 @@ where
 }
 
 fn test_fromstr_parse_err<T>(errors: &[(&str, &'static str)])
-where
-    T: Debug + PartialEq + FromStr,
-    <T as FromStr>::Err: ToString,
+    where
+        T: Debug + PartialEq + FromStr,
+        <T as FromStr>::Err: ToString,
 {
     for &(s, err) in errors {
         let actual = s.parse::<T>().unwrap_err().to_string();
@@ -850,7 +850,7 @@ fn test_parse_f64() {
     ]);
 
     #[cfg(not(feature = "arbitrary_precision"))]
-    test_parse_ok(vec![
+        test_parse_ok(vec![
         // With arbitrary-precision enabled, this parses as Number{"3.00"}
         // but the float is Number{"3.0"}
         ("3.00", 3.0f64),
@@ -974,7 +974,7 @@ fn test_parse_number() {
     ]);
 
     #[cfg(feature = "arbitrary_precision")]
-    test_parse_ok(vec![
+        test_parse_ok(vec![
         ("1e999", Number::from_string_unchecked("1e999".to_owned())),
         ("-1e999", Number::from_string_unchecked("-1e999".to_owned())),
         ("1e-999", Number::from_string_unchecked("1e-999".to_owned())),
@@ -1086,7 +1086,7 @@ fn test_parse_list() {
 
     test_parse_ok(vec![("[[3], [1, 2]]", vec![vec![3u64], vec![1, 2]])]);
 
-    test_parse_ok(vec![("[1]", (1u64,))]);
+    test_parse_ok(vec![("[1]", (1u64, ))]);
 
     test_parse_ok(vec![("[1, 2]", (1u64, 2u64))]);
 
@@ -1197,7 +1197,7 @@ fn test_parse_struct() {
             ]
         ]",
     )
-    .unwrap();
+        .unwrap();
 
     assert_eq!(
         v,
@@ -1266,10 +1266,84 @@ fn test_parse_enum_errors() {
         ],
     );
 }
+
+//#[test]
+fn test123() {
+    let nile = Value::from_str("[]").unwrap();
+//    let list = Value::from_str("(\"plus\" 1 5)").unwrap();
+//    let list = Value::from_str("(\"def\" \"foo\" \"bar\")").unwrap();
+    let list = Value::from_str("(\"fn\" \"my-fn\" [] (\"plus\" 1 2))").unwrap();
+    println!("list! {:?}", list);
+
+    let mut env: HashMap<String, String> = HashMap::new();
+
+    type SomeFunc = fn(i64) -> i64;
+    type SomeFunc2 = fn(Evaluated) -> Evaluated;
+
+    #[derive(Debug)]
+    enum Evaluated {
+        Symbol(String),
+        Number(i64),
+        Fn(SomeFunc),
+    }
+
+    let evaled = match list {
+        Value::Vector(v) => {
+            if v.is_empty() {
+//                Value::from(v)
+                ()
+            }
+            match &v[0] {
+                Value::String(s) => {
+                    match s.as_bytes() {
+                        b"fn" => {
+                            match (&v[1], &v[2], &v[3]) {
+                                (Value::String(name), Value::Vector(args), Value::Vector(body)) => {
+                                    Evaluated::Fn(|x| 2)
+                                }
+                                _ => unreachable!()
+                            }
+                        }
+                        b"def" => {
+                            match (&v[1], &v[2]) {
+                                (Value::String(s), Value::String(s2)) => {
+                                    env.insert(s.to_string(), s2.to_string());
+                                    Evaluated::Symbol(s2.to_string())
+                                }
+                                _ => unreachable!()
+                            }
+                        }
+                        b"plus" => {
+                            let mut sum = 0;
+                            for i in 1..v.len() {
+                                match &v[i] {
+                                    Value::Number(n) => sum += n.as_i64().unwrap(),
+                                    _ => unreachable!("cant add non numbers")
+                                }
+                            }
+                            Evaluated::Number(sum)
+
+//                            Value::from("hello")
+                        }
+
+                        _ => unreachable!()
+                    }
+                }
+                _ => unreachable!()
+            }
+        }
+        _ => unreachable!()
+    };
+    println!("evaled {:?}", evaled);
+    println!("env {:?}", env);
+
+    assert_eq!(true, false)
+}
+
 #[test]
 fn test_parse_keyword() {
     let v = Value::from_str(":foo").unwrap();
-    println!("my keyword {} ",v);
+    println!("my keyword {} ", v);
 //    assert_eq!(v, Value::Keyword(Keyword::from_str("foo").unwrap()));
 //    assert_eq!(format!("{}", v), ":foo");
 //    let fail = Value::from_str(":/foo");
@@ -1282,16 +1356,23 @@ fn test_parse_keyword() {
 //    assert_eq!(nil,Value::Nil);
     let nile = Value::from_str("nileeeeeee").unwrap();
     let nilesym = Symbol::from_str("nileeeeeee").unwrap();
-    println!("my symbol {} ",nile);
+    println!("my symbol {} ", nile);
     let n = Value::from_str("n").unwrap();
-    println!("my short sym {}",n);
+    println!("my short sym {}", n);
+
+    let cool_sym = Value::from_str("+").unwrap();
+    println!("my cool sym {:?}", cool_sym);
+
     let nil = Value::from_str("nil").unwrap();
-    println!("my nil {}",nil);
-    assert_eq!(nil,Value::Nil);
+    println!("my nil {}", nil);
+    assert_eq!(nil, Value::Nil);
+
+    let list  = Value::from_str("()");
+    println!("my list {:?}", list);
 
 //    println!("my symbol {:?} ",nile);
-    assert_eq!(nile,Value::Symbol(nilesym));
-
+    assert_eq!(nile, Value::Symbol(nilesym));
+    assert_eq!(false,true);
 }
 
 #[test]
@@ -1421,13 +1502,13 @@ fn test_serialize_seq_with_no_len() {
     struct MyVec<T>(Vec<T>);
 
     impl<T> ser::Serialize for MyVec<T>
-    where
-        T: ser::Serialize,
+        where
+            T: ser::Serialize,
     {
         #[inline]
         fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: ser::Serializer,
+            where
+                S: ser::Serializer,
         {
             use serde::ser::SerializeSeq;
             let mut seq = try!(serializer.serialize_seq(None));
@@ -1443,8 +1524,8 @@ fn test_serialize_seq_with_no_len() {
     }
 
     impl<'de, T> de::Visitor<'de> for Visitor<T>
-    where
-        T: de::Deserialize<'de>,
+        where
+            T: de::Deserialize<'de>,
     {
         type Value = MyVec<T>;
 
@@ -1454,16 +1535,16 @@ fn test_serialize_seq_with_no_len() {
 
         #[inline]
         fn visit_unit<E>(self) -> Result<MyVec<T>, E>
-        where
-            E: de::Error,
+            where
+                E: de::Error,
         {
             Ok(MyVec(Vec::new()))
         }
 
         #[inline]
         fn visit_seq<V>(self, mut visitor: V) -> Result<MyVec<T>, V::Error>
-        where
-            V: de::SeqAccess<'de>,
+            where
+                V: de::SeqAccess<'de>,
         {
             let mut values = Vec::new();
 
@@ -1476,12 +1557,12 @@ fn test_serialize_seq_with_no_len() {
     }
 
     impl<'de, T> de::Deserialize<'de> for MyVec<T>
-    where
-        T: de::Deserialize<'de>,
+        where
+            T: de::Deserialize<'de>,
     {
         fn deserialize<D>(deserializer: D) -> Result<MyVec<T>, D::Error>
-        where
-            D: de::Deserializer<'de>,
+            where
+                D: de::Deserializer<'de>,
         {
             deserializer.deserialize_map(Visitor {
                 marker: PhantomData,
@@ -1507,14 +1588,14 @@ fn test_serialize_map_with_no_len() {
     struct MyMap<K, V>(BTreeMap<K, V>);
 
     impl<K, V> ser::Serialize for MyMap<K, V>
-    where
-        K: ser::Serialize + Ord,
-        V: ser::Serialize,
+        where
+            K: ser::Serialize + Ord,
+            V: ser::Serialize,
     {
         #[inline]
         fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: ser::Serializer,
+            where
+                S: ser::Serializer,
         {
             use serde::ser::SerializeMap;
             let mut map = try!(serializer.serialize_map(None));
@@ -1531,9 +1612,9 @@ fn test_serialize_map_with_no_len() {
     }
 
     impl<'de, K, V> de::Visitor<'de> for Visitor<K, V>
-    where
-        K: de::Deserialize<'de> + Eq + Ord,
-        V: de::Deserialize<'de>,
+        where
+            K: de::Deserialize<'de> + Eq + Ord,
+            V: de::Deserialize<'de>,
     {
         type Value = MyMap<K, V>;
 
@@ -1543,16 +1624,16 @@ fn test_serialize_map_with_no_len() {
 
         #[inline]
         fn visit_unit<E>(self) -> Result<MyMap<K, V>, E>
-        where
-            E: de::Error,
+            where
+                E: de::Error,
         {
             Ok(MyMap(BTreeMap::new()))
         }
 
         #[inline]
         fn visit_map<Visitor>(self, mut visitor: Visitor) -> Result<MyMap<K, V>, Visitor::Error>
-        where
-            Visitor: de::MapAccess<'de>,
+            where
+                Visitor: de::MapAccess<'de>,
         {
             let mut values = BTreeMap::new();
 
@@ -1565,13 +1646,13 @@ fn test_serialize_map_with_no_len() {
     }
 
     impl<'de, K, V> de::Deserialize<'de> for MyMap<K, V>
-    where
-        K: de::Deserialize<'de> + Eq + Ord,
-        V: de::Deserialize<'de>,
+        where
+            K: de::Deserialize<'de> + Eq + Ord,
+            V: de::Deserialize<'de>,
     {
         fn deserialize<D>(deserializer: D) -> Result<MyMap<K, V>, D::Error>
-        where
-            D: de::Deserializer<'de>,
+            where
+                D: de::Deserializer<'de>,
         {
             deserializer.deserialize_map(Visitor {
                 marker: PhantomData,
@@ -1674,7 +1755,7 @@ fn test_byte_buf_ser() {
     assert_eq!(to_string(&bytes).unwrap(), "[]".to_string());
 
     let bytes = ByteBuf::from(vec![1, 2, 3]);
-    let a =  to_string(&bytes).unwrap();
+    let a = to_string(&bytes).unwrap();
     assert_eq!(a, "[1 2 3]".to_string());
 }
 
@@ -1714,7 +1795,7 @@ fn test_edn_pointer() {
         "m~n" 8
     }"#,
     )
-    .unwrap();
+        .unwrap();
     assert_eq!(data.pointer("").unwrap(), &data);
     assert_eq!(data.pointer("/foo").unwrap(), &edn!(["bar", "baz"]));
     assert_eq!(data.pointer("/foo/0").unwrap(), &edn!("bar"));
@@ -1753,7 +1834,7 @@ fn test_edn_pointer_mut() {
         "m~n" 8
     }"#,
     )
-    .unwrap();
+        .unwrap();
 
     // Basic pointer checks
     assert_eq!(data.pointer_mut("/foo").unwrap(), &edn!(["bar", "baz"]));
@@ -1831,8 +1912,8 @@ fn test_deny_float_key() {
     struct Float;
     impl Serialize for Float {
         fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer,
+            where
+                S: Serializer,
         {
             serializer.serialize_f32(1.0)
         }
@@ -1905,7 +1986,7 @@ fn test_edn_macro() {
     });
 
     #[deny(unused_results)]
-    let _ = edn!({ "architecture": [true, nil] });
+        let _ = edn!({ "architecture": [true, nil] });
 }
 
 #[test]
@@ -2187,8 +2268,8 @@ fn test_borrow_in_map_key() {
 
     impl<'de> Deserialize<'de> for MyMapKey {
         fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where
-            D: de::Deserializer<'de>,
+            where
+                D: de::Deserializer<'de>,
         {
             let s = <&str>::deserialize(deserializer)?;
             let n = s.parse().map_err(de::Error::custom)?;

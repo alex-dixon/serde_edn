@@ -736,6 +736,23 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             None => Err(self.peek_error(ErrorCode::ExpectedWhitespace))
         }
     }
+    fn end_list(&mut self) -> Result<()> {
+        match try!(self.parse_whitespace()) {
+            Some(b')') => {
+                self.eat_char();
+                Ok(())
+            }
+            Some(b',') => {
+                self.eat_char();
+                match self.parse_whitespace() {
+                    Ok(Some(b')')) => Err(self.peek_error(ErrorCode::TrailingComma)),
+                    _ => Err(self.peek_error(ErrorCode::TrailingCharacters)),
+                }
+            }
+            Some(_) => Err(self.peek_error(ErrorCode::TrailingCharacters)),
+            None => Err(self.peek_error(ErrorCode::EofWhileParsingList)),
+        }
+    }
 
     fn end_seq(&mut self) -> Result<()> {
         match try!(self.parse_whitespace()) {
@@ -1087,18 +1104,18 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
                                     })
                                 }
                                 Reference::Copied(_) => unreachable!()
-                            }
+                            };
                         }
                         Some(v) => {
                             if v == reserved[offset] {
                                 offset += 1;
 
                                 if offset == reserved_len {
-                                    match try!(self.peek()){
+                                    match try!(self.peek()) {
                                         Some(b' ') | Some(b'\n') | Some(b'\t') | Some(b'\r') | Some(b',') => {
-                                            break visitor.visit_unit()
-                                        },
-                                        Some(v2)=> {
+                                            break visitor.visit_unit();
+                                        }
+                                        Some(v2) => {
                                             self.scratch.extend_from_slice(&reserved[0..offset]);
                                             break match try!(self.read.parse_symbol_offset(&mut self.scratch, offset)) {
                                                 Reference::Borrowed(s) => {
@@ -1107,11 +1124,11 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
                                                     })
                                                 }
                                                 Reference::Copied(_) => unreachable!()
-                                            }
+                                            };
                                         }
                                         // eof
-                                        None=>{
-                                            break visitor.visit_unit()
+                                        None => {
+                                            break visitor.visit_unit();
                                         }
                                     }
                                 }
@@ -1125,18 +1142,18 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
                             self.scratch.extend_from_slice(&[v]);
                             break match try!(self.read.parse_symbol_offset(&mut self.scratch, offset)) {
                                 Reference::Borrowed(s) => {
-                                     visitor.visit_map(SymbolDeserializer {
+                                    visitor.visit_map(SymbolDeserializer {
                                         value: s
                                     })
                                 }
                                 Reference::Copied(_) => unreachable!()
-                            }
+                            };
                         }
 
                         // eof
                         None => {
                             if offset == reserved_len {
-                                break visitor.visit_unit()
+                                break visitor.visit_unit();
                             }
                             // not a reserved thing but matches the reserved word sequence
                             // up until offset
@@ -1149,7 +1166,7 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
                                     })
                                 }
                                 Reference::Copied(_) => unreachable!()
-                            }
+                            };
                         }
                     }
                 }
@@ -1220,6 +1237,29 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
                     (Err(err), _) | (_, Err(err)) => Err(err),
                 }
             }
+            b'(' => {
+                self.remaining_depth -= 1;
+                if self.remaining_depth == 0 {
+                    return Err(self.peek_error(ErrorCode::RecursionLimitExceeded));
+                }
+
+                self.eat_char();
+                let ret = visitor.visit_seq(ListAccess::new(self));
+//
+
+                self.remaining_depth += 1;
+                // todo. return Value::List ...
+//                match ret {
+//                    Ok(x)=> match x {
+//                        Value::Vector(x)=>println!("{:?}",x)
+//                    }
+//                }
+
+                match (ret, self.end_list()) {
+                    (Ok(ret), Ok(())) => Ok(ret),
+                    (Err(err), _) | (_, Err(err)) => Err(err),
+                }
+            }
             b'{' => {
                 self.remaining_depth -= 1;
                 if self.remaining_depth == 0 {
@@ -1234,6 +1274,17 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
                 match (ret, self.end_map()) {
                     (Ok(ret), Ok(())) => Ok(ret),
                     (Err(err), _) | (_, Err(err)) => Err(err),
+                }
+            }
+            c => {
+                self.scratch.clear();
+                match try!(self.read.parse_symbol(&mut self.scratch)) {
+                    Reference::Borrowed(s) => {
+                        visitor.visit_map(SymbolDeserializer {
+                            value: s
+                        })
+                    }
+                    Reference::Copied(_) => unreachable!()
                 }
             }
             _ => Err(self.peek_error(ErrorCode::ExpectedSomeValue)),
@@ -1822,7 +1873,43 @@ impl<'de, 'a, R: Read<'de> + 'a> de::SeqAccess<'de> for SeqAccess<'a, R> {
         };
 
         match peek {
-            Some(b']') => Err(self.de.peek_error(ErrorCode::TrailingComma)),
+//            Some(b']') => Err(self.de.peek_error(ErrorCode::TrailingComma)),
+            Some(_) => Ok(Some(try!(seed.deserialize(&mut *self.de)))),
+            None => Err(self.de.peek_error(ErrorCode::EofWhileParsingValue)),
+        }
+    }
+}
+
+struct ListAccess<'a, R: 'a> {
+    de: &'a mut Deserializer<R>,
+}
+
+impl<'a, R: 'a> ListAccess<'a, R> {
+    fn new(de: &'a mut Deserializer<R>) -> Self {
+        ListAccess {
+            de: de,
+        }
+    }
+}
+
+impl<'de, 'a, R: Read<'de> + 'a> de::SeqAccess<'de> for ListAccess<'a, R> {
+    type Error = Error;
+
+    fn next_element_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>>
+        where
+            T: de::DeserializeSeed<'de>,
+    {
+        let peek = match try!(self.de.parse_whitespace()) {
+            Some(b')') => {
+                return Ok(None);
+            }
+            Some(b) => Some(b),
+            None => {
+                return Err(self.de.peek_error(ErrorCode::EofWhileParsingList));
+            }
+        };
+
+        match peek {
             Some(_) => Ok(Some(try!(seed.deserialize(&mut *self.de)))),
             None => Err(self.de.peek_error(ErrorCode::EofWhileParsingValue)),
         }
