@@ -43,6 +43,7 @@ use serde_edn::{
     from_reader, from_slice, from_str, from_value, to_string, to_string_pretty, to_value, to_vec,
     to_writer, Deserializer, Number, Value, Keyword
 };
+use serde_edn::value::Symbol;
 
 macro_rules! treemap {
     () => {
@@ -1268,8 +1269,29 @@ fn test_parse_enum_errors() {
 #[test]
 fn test_parse_keyword() {
     let v = Value::from_str(":foo").unwrap();
-    assert_eq!(v, Value::Keyword(Keyword::from_str("foo").unwrap()));
-    assert_eq!(format!("{}", v), ":foo")
+    println!("my keyword {} ",v);
+//    assert_eq!(v, Value::Keyword(Keyword::from_str("foo").unwrap()));
+//    assert_eq!(format!("{}", v), ":foo");
+//    let fail = Value::from_str(":/foo");
+//    println!("fail {}",fail.unwrap_err());
+//    let fail2  =  Value::from_str(":4");
+//    println!("fail {}",fail2.unwrap_err());
+//    assert_eq!(fail, true)
+
+//    let nil  =  Value::from_str("nil").unwrap();
+//    assert_eq!(nil,Value::Nil);
+    let nile = Value::from_str("nileeeeeee").unwrap();
+    let nilesym = Symbol::from_str("nileeeeeee").unwrap();
+    println!("my symbol {} ",nile);
+    let n = Value::from_str("n").unwrap();
+    println!("my short sym {}",n);
+    let nil = Value::from_str("nil").unwrap();
+    println!("my nil {}",nil);
+    assert_eq!(nil,Value::Nil);
+
+//    println!("my symbol {:?} ",nile);
+    assert_eq!(nile,Value::Symbol(nilesym));
+
 }
 
 #[test]

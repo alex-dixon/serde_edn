@@ -28,6 +28,7 @@ use serde::de;
 #[cfg(feature = "arbitrary_precision")]
 use number::NumberFromString;
 use keyword::KeywordFromString;
+use symbol::SymbolFromString;
 
 impl<'de> Deserialize<'de> for Value {
     #[inline]
@@ -117,6 +118,10 @@ impl<'de> Deserialize<'de> for Value {
                     Some(KeyClass::KeywordHack) => {
                         let kw: KeywordFromString = visitor.next_value()?;
                         Ok(Value::Keyword(kw.value))
+                    }
+                    Some(KeyClass::SymbolHack) => {
+                        let kw: SymbolFromString = visitor.next_value()?;
+                        Ok(Value::Symbol(kw.value))
                     }
                     #[cfg(feature = "arbitrary_precision")]
                     Some(KeyClass::Number) => {
@@ -235,7 +240,11 @@ impl<'de> serde::Deserializer<'de> for Value {
                 println!("visit keyword to str...{:?}", kw.to_string());
                 visitor.visit_string(kw.to_string())
             }
-            Value::Symbol(v) => v.deserialize_any(visitor),
+            Value::Symbol(v) => {
+//                v.deserialize_any(visitor)
+                visitor.visit_string(v.to_string())
+
+            },
         }
     }
 
@@ -790,7 +799,16 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
 //                kw.deserialize_any(visitor)
 //                visitor.visit_borrowed_str(&kw.value)
             }
-            Value::Symbol(ref sym) => visitor.visit_borrowed_str(&sym.value)
+            Value::Symbol(ref sym) => {
+                match sym.clone().value {
+                    None => Err(serde::de::Error::custom("symbol error")),
+                    Some(v) => {
+                        println!("symbol ref visit str");
+                        visitor.visit_str(&v)
+                    }
+                }
+//                visitor.visit_borrowed_str(&sym.value)
+            }
         }
     }
 
@@ -1344,6 +1362,7 @@ enum KeyClass {
     #[cfg(feature = "raw_value")]
     RawValue,
     KeywordHack,
+    SymbolHack,
 }
 
 impl<'de> DeserializeSeed<'de> for KeyClassifier {
@@ -1369,6 +1388,7 @@ impl<'de> Visitor<'de> for KeyClassifier {
             E: de::Error,
     {
         match s {
+            ::symbol::TOKEN => Ok(KeyClass::SymbolHack),
             ::keyword::TOKEN => Ok(KeyClass::KeywordHack),
             #[cfg(feature = "arbitrary_precision")]
             ::number::TOKEN => Ok(KeyClass::Number),
@@ -1383,6 +1403,7 @@ impl<'de> Visitor<'de> for KeyClassifier {
             E: de::Error,
     {
         match s.as_str() {
+            ::symbol::TOKEN => Ok(KeyClass::SymbolHack),
             ::keyword::TOKEN => Ok(KeyClass::KeywordHack),
             #[cfg(feature = "arbitrary_precision")]
             ::number::TOKEN => Ok(KeyClass::Number),

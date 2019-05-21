@@ -233,7 +233,7 @@ impl Debug for Value {
             Value::Vector(ref v) => formatter.debug_tuple("Vector").field(v).finish(),
             Value::Object(ref v) => formatter.debug_tuple("Object").field(v).finish(),
             Value::Keyword(ref v) => Debug::fmt(v, formatter),
-            Value::Symbol(ref v) => formatter.debug_tuple("symbol").field(v).finish()
+            Value::Symbol(ref v) => Debug::fmt(v, formatter),
         }
     }
 }

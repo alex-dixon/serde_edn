@@ -71,6 +71,10 @@ pub trait Read<'de>: private::Sealed {
     /// necessary. The scratch space is initially empty.
     #[doc(hidden)]
     fn parse_symbol<'s>(&'s mut self, scratch: &'s mut Vec<u8>) -> Result<Reference<'de, 's, str>>;
+    fn parse_symbol_offset<'s>(&'s mut self, scratch: &'s mut Vec<u8>, offset:usize) -> Result<Reference<'de, 's, str>>;
+//    fn parse_reserved_or_symbol<'s,V,VS,VR>(
+//        &'s mut self, scratch: &'s mut Vec<u8>, offset:usize,
+//    visit_symbol:VS,visit_reserved:VR) -> Result<V::Value>;
     fn parse_keyword<'s>(&'s mut self, scratch: &'s mut Vec<u8>) -> Result<Reference<'de, 's, str>>;
 
     /// Assumes the previous byte was a quotation mark. Parses a edn-escaped
@@ -358,6 +362,13 @@ where
     }
 
 
+    fn parse_symbol_offset<'s>(&'s mut self, scratch: &'s mut Vec<u8>,offset:usize) -> Result<Reference<'de,'s,str>> {
+        // starting at an index is irrelevant here because our parse_symbol_bytes method doesn't hard code a start position
+        self.parse_symbol_bytes(scratch, false, as_str)
+            .map(Reference::Copied)
+    }
+
+
     fn parse_str<'s>(&'s mut self, scratch: &'s mut Vec<u8>) -> Result<Reference<'de, 's, str>> {
         self.parse_str_bytes(scratch, true, as_str)
             .map(Reference::Copied)
@@ -458,6 +469,148 @@ impl<'a> SliceRead<'a> {
             }
         }
         position
+    }
+//    fn parse_reserved_or_symbol<'s, T, VS,VR,A>(
+//        &mut self,
+//        scratch: &mut Vec<u8>,
+//        offset: usize,
+//        visit_symbol: VS,
+//        visit_reserved: VR,
+//    ) where VR: FnOnce(&'s A) -> Result<T>,
+//            VS: FnOnce(&'s str) -> Result<T> {
+//        loop {
+//            match try!(self.next()) {
+//                Some(b' ') | Some(b'\n') | Some(b'\t') | Some(b'\r') | Some(b',') => {
+//                    scratch.extend_from_slice(&reserved[0..offset]);
+//                    break match try!(self.parse_symbol_offset(scratch, offset)) {
+//                        Reference::Borrowed(s) => {
+//                            visit_symbol(s);
+////                            visitor.visit_map(SymbolDeserializer {
+////                                value: s
+////                            })
+//                        }
+//                        Reference::Copied(_) => unreachable!()
+//                    }
+//                }
+//                Some(v) => {
+//                    if v == reserved[offset] {
+//                        offset += 1;
+//
+//                        if offset == reserved_len {
+//                            match try!(self.peek()){
+//                                Some(b' ') | Some(b'\n') | Some(b'\t') | Some(b'\r') | Some(b',') => {
+//                                    break visit_reserved()
+////                                    break visitor.visit_unit()
+//                                },
+//                                Some(v2)=> {
+//                                    scratch.extend_from_slice(&reserved[0..offset]);
+//                                    break match try!(self.parse_symbol_offset(scratch, offset)) {
+//                                        Reference::Borrowed(s) => {
+//                                            visit_symbol(s);
+////                                            visitor.visit_map(SymbolDeserializer {
+////                                                value: s
+////                                            })
+//                                        }
+//                                        Reference::Copied(_) => unreachable!()
+//                                    }
+//                                }
+//                                // eof
+//                                None=>{
+//                                    break visit_reserved()
+//                                }
+//                            }
+//                        }
+//                        // loop again because within reserved sequence but not at the end
+//                        continue;
+//                    }
+//
+//                    // not a reserved word but matches the reserved word sequence
+//                    // up until offset
+//                    self.scratch.extend_from_slice(&reserved[0..offset]);
+//                    self.scratch.extend_from_slice(&[v]);
+//                    break match try!(self.read.parse_symbol_offset(&mut self.scratch, offset)) {
+//                        Reference::Borrowed(s) => {
+//                            visitor.visit_map(SymbolDeserializer {
+//                                value: s
+//                            })
+//                        }
+//                        Reference::Copied(_) => unreachable!()
+//                    }
+//                }
+//
+//                // eof
+//                None => {
+//                    if offset == reserved_len {
+//                        break visitor.visit_unit()
+//                    }
+//                    // not a reserved thing but matches the reserved word sequence
+//                    // up until offset
+//                    self.scratch.extend_from_slice(&reserved[0..offset]);
+////                            self.scratch.extend_from_slice(&[v]);
+//                    break match try!(self.read.parse_symbol_offset(&mut self.scratch, offset)) {
+//                        Reference::Borrowed(s) => {
+//                            visitor.visit_map(SymbolDeserializer {
+//                                value: s
+//                            })
+//                        }
+//                        Reference::Copied(_) => unreachable!()
+//                    }
+//                }
+//            }
+//        }
+//    }
+    fn parse_symbol_bytes_offset<'s, T: ?Sized, F>(
+        &'s mut self,
+        scratch: &'s mut Vec<u8>,
+        validate: bool,
+        offset:usize,
+        result: F,
+    ) -> Result<Reference<'a, 's, T>>
+        where
+            T: 's,
+            F: for<'f> FnOnce(&'s Self, &'f [u8]) -> Result<&'f T>,
+    {
+        // Index of the first byte not yet copied into the scratch space.
+        println!("index {}",self.index);
+        println!("offset {}",offset);
+        let mut start = self.index-offset;
+
+        loop {
+            while self.index < self.slice.len() && VALID_SYMBOL_BYTE[self.slice[self.index] as usize] {
+                self.index += 1;
+            }
+            // symbol or keyword can terminate in EOF or whitespace
+            if self.index == self.slice.len() {
+//                return error(self, ErrorCode::EofWhileParsingString);
+                // Fast path: return a slice of the raw edn without any
+                // copying.
+//                let borrowed = &self.slice[start..self.index];
+                let borrowed = &self.slice[start..self.index];
+                self.index += 1;
+                return result(self, borrowed).map(Reference::Borrowed);
+            }
+            match self.slice[self.index] {
+                // did we iterate until whitespace?
+                b' ' | b'\n' | b'\r' | b'\t' |  b',' => {
+                    if scratch.is_empty() {
+                        // Fast path: return a slice of the raw edn without any
+                        // copying.
+                        let borrowed = &self.slice[start..self.index];
+                        self.index += 1;
+                        return result(self, borrowed).map(Reference::Borrowed);
+                    } else {
+                        //  todo. expect scratch to be empty always because we don't deal with escape sequences,
+                        // remove the check once this appears to be the case
+                        unreachable!();
+                    }
+                }
+                // iterated until invalid symbol character
+                _ => {
+                    // todo. invalid symbol, though keyword uses this also
+                    return error(self, ErrorCode::InvalidKeyword)
+                }
+            }
+        }
     }
 
 
@@ -622,6 +775,10 @@ impl<'a> Read<'a> for SliceRead<'a> {
         self.parse_symbol_bytes(scratch, true, as_str)
     }
 
+    fn parse_symbol_offset<'s>(&'s mut self, scratch: &'s mut Vec<u8>, offset: usize) -> Result<Reference<'a, 's, str>> {
+        self.parse_symbol_bytes_offset(scratch, true, offset, as_str)
+    }
+
     fn parse_keyword<'s>(&'s mut self, scratch: &'s mut Vec<u8>) -> Result<Reference<'a, 's, str>> {
         self.parse_symbol_bytes(scratch, true, as_str)
     }
@@ -756,6 +913,15 @@ impl<'a> Read<'a> for StrRead<'a> {
 
     fn parse_symbol<'s>(&'s mut self, scratch: &'s mut Vec<u8>) -> Result<Reference<'a, 's, str>> {
         self.delegate.parse_symbol_bytes(scratch, true, |_, bytes| {
+            // The input is assumed to be valid UTF-8 and the \u-escapes are
+            // checked along the way, so don't need to check here.
+            // todo.
+            Ok(unsafe { str::from_utf8_unchecked(bytes) })
+        })
+    }
+
+    fn parse_symbol_offset<'s>(&'s mut self, scratch: &'s mut Vec<u8>, offset: usize) -> Result<Reference<'a, 's, str>> {
+        self.delegate.parse_symbol_bytes_offset(scratch, true,offset, |_, bytes| {
             // The input is assumed to be valid UTF-8 and the \u-escapes are
             // checked along the way, so don't need to check here.
             // todo.

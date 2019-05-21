@@ -75,6 +75,7 @@ impl Error {
             | ErrorCode::InvalidEscape
             | ErrorCode::InvalidNumber
             | ErrorCode::InvalidKeyword
+            | ErrorCode::InvalidSymbol
             | ErrorCode::NumberOutOfRange
             | ErrorCode::InvalidUnicodeCodePoint
             | ErrorCode::ControlCharacterWhileParsingString
@@ -222,6 +223,7 @@ pub enum ErrorCode {
     ///
     ExpectedWhitespace,
     InvalidKeyword,
+    InvalidSymbol,
 
 
     /// Expected this character to be either a `'{'` or a `'['`.
@@ -326,6 +328,7 @@ impl Display for ErrorCode {
             ErrorCode::ExpectedColon => f.write_str("expected `:`"),
             ErrorCode::ExpectedWhitespace => f.write_str("expected whitespace"),
             ErrorCode::InvalidKeyword => f.write_str("invalid keyword"),
+            ErrorCode::InvalidSymbol => f.write_str("invalid symbol"),
             ErrorCode::ExpectedListCommaOrEnd => f.write_str("expected `,` or `]`"),
             ErrorCode::ExpectedObjectCommaOrEnd => f.write_str("expected `,` or `}`"),
             ErrorCode::ExpectedObjectOrVector => f.write_str("expected `{` or `[`"),
