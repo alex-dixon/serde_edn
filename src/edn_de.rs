@@ -4,10 +4,8 @@ use std::str::FromStr;
 
 pub trait EDNVisitor<'de>: Sized + Visitor<'de> {
     type EDNValue;
-//    type Value = <Self as Visitor<'de>>::Value;
 
     fn visit_list<A>(self, seq: A) -> Result<<Self as Visitor<'de>>::Value, A::Error>
-//    fn visit_list<A>(self, seq: A) -> Result<Self::Value, A::Error>
         where
             A: SeqAccess<'de>,
     {
@@ -43,7 +41,8 @@ impl<T> EDNDeserializeOwned for T where T: for<'de> EDNDeserialize<'de> {}
 
 #[test]
 fn main() {
-    let x = Value::from_str("(\"foo\")");
+//    let x = Value::from_str(r#"(foo "bar")"#);
+    let x = Value::from_str(r#"(foo(bar"baz"))"#);
     let k = Value::from_str(":foo");
     println!("x {:?}",x.unwrap());
     println!("k {:?}",k.unwrap());

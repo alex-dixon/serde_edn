@@ -560,13 +560,15 @@ impl<'a> SliceRead<'a> {
         println!("index {}",self.index);
         println!("offset {}",offset);
         println!("scratch {:?}",scratch);
+        println!("slice {:?}",self.slice);
+        scratch.clear();
         let mut start = self.index-offset;
 
         loop {
             while self.index < self.slice.len() && VALID_SYMBOL_BYTE[self.slice[self.index] as usize] {
                 self.index += 1;
             }
-            // symbol or keyword can terminate in EOF or whitespace
+            // symbol or keyword can terminate in EOF or whitespace or `)` `]` `}`
             if self.index == self.slice.len() {
 //                return error(self, ErrorCode::EofWhileParsingString);
                 // Fast path: return a slice of the raw edn without any
@@ -577,12 +579,28 @@ impl<'a> SliceRead<'a> {
                 return result(self, borrowed).map(Reference::Borrowed);
             }
             match self.slice[self.index] {
+                // done if seq start or terminate
+                b')' | b']' | b'}' | b'(' | b'[' | b'{' => {
+                    if scratch.is_empty() {
+                        // Fast path: return a slice of the raw edn without any
+                        // copying.
+                        let borrowed = &self.slice[start..self.index];
+//                        self.index += 1;
+                        println!("got {:?}",borrowed);
+                        return result(self, borrowed).map(Reference::Borrowed);
+                    } else {
+                        //  todo. expect scratch to be empty always because we don't deal with escape sequences,
+                        // remove the check once this appears to be the case
+                        unreachable!();
+                    }
+                }
                 // did we iterate until whitespace?
                 b' ' | b'\n' | b'\r' | b'\t' |  b',' => {
                     if scratch.is_empty() {
                         // Fast path: return a slice of the raw edn without any
                         // copying.
                         let borrowed = &self.slice[start..self.index];
+                        println!("got {:?}",borrowed);
                         self.index += 1;
                         return result(self, borrowed).map(Reference::Borrowed);
                     } else {
@@ -592,7 +610,8 @@ impl<'a> SliceRead<'a> {
                     }
                 }
                 // iterated until invalid symbol character
-                _ => {
+                c => {
+                    println!("fallthrough {:?}",c);
                     // todo. invalid symbol, though keyword uses this also
                     return error(self, ErrorCode::InvalidKeyword)
                 }
@@ -631,6 +650,21 @@ impl<'a> SliceRead<'a> {
                 return result(self, borrowed).map(Reference::Borrowed);
             }
             match self.slice[self.index] {
+                // done if seq/str start or terminate
+                b')' | b']' | b'}' | b'(' | b'[' | b'{' | b'"' => {
+                    if scratch.is_empty() {
+                        // Fast path: return a slice of the raw edn without any
+                        // copying.
+                        let borrowed = &self.slice[start..self.index];
+                        // don't move the cursor
+//                        self.index += 1;
+                        return result(self, borrowed).map(Reference::Borrowed);
+                    } else {
+                        //  todo. expect scratch to be empty always because we don't deal with escape sequences,
+                        // remove the check once this appears to be the case
+                        unreachable!();
+                    }
+                }
                 // did we iterate until whitespace?
                 b' ' | b'\n' | b'\r' | b'\t' |  b',' => {
                     if scratch.is_empty() {
@@ -647,6 +681,7 @@ impl<'a> SliceRead<'a> {
                 }
                 // iterated until invalid symbol character
                 _ => {
+                    println!("fallthrough parse symbol bytes");
                     // todo. invalid symbol
                     return error(self, ErrorCode::InvalidKeyword)
                 }
