@@ -30,7 +30,7 @@ use number::NumberDeserializer;
 use keyword::{Keyword, KeywordDeserializer};
 use Value;
 use symbol::SymbolDeserializer;
-use edn_de::{EDNDeserialize, EDNDeserializer, EDNVisitor, EDNDeserializeOwned};
+use edn_de::{EDNDeserialize, EDNDeserializer, EDNVisitor, EDNDeserializeOwned, EDNDeserializeSeed, EDNSeqAccess};
 use serde::Deserialize;
 
 //////////////////////////////////////////////////////////////////////////////
@@ -1400,8 +1400,10 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
                     return Err(self.peek_error(ErrorCode::RecursionLimitExceeded));
                 }
 
+                println!("serde::Deserialize was called");
+                unreachable!();
                 self.eat_char();
-                let ret = visitor.visit_seq(ListAccess::new(self));
+                let ret = visitor.visit_seq(SeqAccess::new(self));
 //
 
                 self.remaining_depth += 1;
@@ -2049,12 +2051,12 @@ impl<'a, R: 'a> ListAccess<'a, R> {
     }
 }
 
-impl<'de, 'a, R: Read<'de> + 'a> de::SeqAccess<'de> for ListAccess<'a, R> {
+impl<'de, 'a, R: Read<'de> + 'a> EDNSeqAccess<'de> for ListAccess<'a, R> {
     type Error = Error;
 
-    fn next_element_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>>
+    fn next_element_seed<T>(&mut self, seed: T) -> Result<Option<<T as EDNDeserializeSeed<'de>>::Value>>
         where
-            T: de::DeserializeSeed<'de>,
+            T: EDNDeserializeSeed<'de> //de::DeserializeSeed<'de>,
     {
         let peek = match try!(self.de.parse_whitespace()) {
             Some(b')') => {
@@ -2067,7 +2069,7 @@ impl<'de, 'a, R: Read<'de> + 'a> de::SeqAccess<'de> for ListAccess<'a, R> {
         };
 
         match peek {
-            Some(_) => Ok(Some(try!(seed.deserialize(&mut *self.de)))),
+            Some(_) => Ok(Some(try!(EDNDeserializeSeed::deserialize(seed,&mut *self.de)))),
             None => Err(self.de.peek_error(ErrorCode::EofWhileParsingValue)),
         }
     }

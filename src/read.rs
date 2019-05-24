@@ -506,9 +506,12 @@ impl<'a> SliceRead<'a> {
 
                         if *offset == reserved_len {
                             match try!(self.peek()){
-                                Some(b' ') | Some(b'\n') | Some(b'\t') | Some(b'\r') | Some(b',') => {
+                                Some(b' ') | Some(b'\n') | Some(b'\t') | Some(b'\r') | Some(b',')
+                                | Some(b'"')
+                                | Some(b'(') | Some(b'{') | Some(b'{')
+                                | Some(b')') | Some(b']') | Some(b'}') => {
                                     break Ok(ParseDecision::Reserved)
-                                },
+                                }
                                 Some(v2)=> {
                                     scratch.extend_from_slice(&reserved_bytes[0..*offset]);
                                     break Ok(ParseDecision::Symbol)
@@ -580,7 +583,7 @@ impl<'a> SliceRead<'a> {
             }
             match self.slice[self.index] {
                 // done if seq start or terminate
-                b')' | b']' | b'}' | b'(' | b'[' | b'{' => {
+                b')' | b']' | b'}' | b'(' | b'[' | b'{' | b'"' => {
                     if scratch.is_empty() {
                         // Fast path: return a slice of the raw edn without any
                         // copying.

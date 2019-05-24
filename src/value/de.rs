@@ -29,7 +29,7 @@ use serde::de;
 use number::NumberFromString;
 use keyword::KeywordFromString;
 use symbol::SymbolFromString;
-use edn_de::{EDNDeserialize, EDNDeserializer, EDNVisitor};
+use edn_de::{EDNDeserialize, EDNDeserializer, EDNVisitor, EDNSeqAccess};
 
 
 // note: This is serde's Deserialize!
@@ -115,7 +115,7 @@ impl<'de> Deserialize<'de> for Value {
 //                    _ => println!("Not ok")
 //                }
 
-                Ok(Value::List(vec))
+                Ok(Value::Vector(vec))
             }
 
             fn visit_map<V>(self, mut visitor: V) -> Result<Value, V::Error>
@@ -157,13 +157,14 @@ impl<'de> Deserialize<'de> for Value {
         }
 
         deserializer.deserialize_any(ValueVisitor)
+//        EDNDeserializer::deserialize_any(deserializer,ValueVisitor)
     }
 }
 
 impl<'de> EDNDeserialize<'de> for Value {
     fn deserialize<D>(deserializer: D) -> Result<Self, <D as EDNDeserializer<'de>>::Error>
         where
-            D: EDNDeserializer<'de> + serde::Deserializer<'de>
+            D: EDNDeserializer<'de> //+ serde::Deserializer<'de>
     {
         struct ValueVisitor;
 
@@ -174,7 +175,7 @@ impl<'de> EDNDeserialize<'de> for Value {
             #[inline]
             fn visit_list<V>(self, mut visitor: V) -> Result<<Self as Visitor<'de>>::Value, V::Error>
                 where
-                    V: SeqAccess<'de>,
+                    V: EDNSeqAccess<'de>,
             {
                 let mut vec = Vec::new();
 
