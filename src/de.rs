@@ -15,7 +15,7 @@ use std::str::{FromStr, from_utf8};
 use std::{i32, u64};
 use std::ops::Deref;
 
-use serde::de::{self, Expected, Unexpected};
+use serde::de::{self, Expected, Unexpected, Visitor};
 
 use super::error::{Error, ErrorCode, Result};
 
@@ -30,6 +30,8 @@ use number::NumberDeserializer;
 use keyword::{Keyword, KeywordDeserializer};
 use Value;
 use symbol::SymbolDeserializer;
+use edn_de::{EDNDeserialize, EDNDeserializer, EDNVisitor, EDNDeserializeOwned};
+use serde::Deserialize;
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -1025,13 +1027,234 @@ pub enum ParseDecision {
     Reserved
 }
 
+
+// maybe can't impl de::Deserializer directly
+// because its deserialize_any requires de::Visitor
+
+impl<'de, 'a, R: Read<'de>> EDNDeserializer<'de> for &'a mut Deserializer<R> {
+    type Error = Error;
+
+    fn deserialize_any<V>(self, visitor: V) -> Result<V::Value> where
+        V: EDNVisitor<'de>
+    {
+        let peek = match try!(self.parse_whitespace()) {
+            Some(b) => b,
+            None => {
+                return Err(self.peek_error(ErrorCode::EofWhileParsingValue));
+            }
+        };
+
+        let value = match peek {
+            // todo. need to look for idents + whitespace once parsing symbols
+            // doesn't appear serde-json has pattern for disambiguation
+            // because we can match on something correct according to json or it's incorrect
+            // (seems inherent to design of json)
+            // few approaches
+            // nil_or_symbol -> scratch with fixed length max 3,
+            // wouldn't need scratch necessarily if not io::read (see parse_str_bytes
+            // in impls of Reader
+            //
+            // optimally symbol support could be optional (feature flag)
+            //
+            // while in here:
+            // symbol unless we see i + n + whitespace
+            // buffer can be fixed size, originated here
+            b'n' => {
+                self.eat_char();
+                let reserved_len: usize = 3;
+                let reserved: [u8; 5] = [b'n', b'i', b'l', 0, 0];
+                let mut offset: usize = 1;
+                self.scratch.clear();
+                match try!(self.read.parse_reserved_or_symbol(
+                    &mut self.scratch,
+                    &mut offset,
+                    reserved_len,
+                    &reserved,
+                )) {
+                    ParseDecision::Reserved => visitor.visit_unit(),
+                    ParseDecision::Symbol => {
+                        match try!(self.read.parse_symbol_offset(&mut self.scratch, offset)) {
+                            Reference::Borrowed(s) => {
+                                visitor.visit_map(SymbolDeserializer {
+                                    value: s
+                                })
+                            }
+                            Reference::Copied(_) => unreachable!()
+                        }
+                    }
+                }
+            }
+            b't' => {
+                self.eat_char();
+                let reserved_len: usize = 4;
+                let reserved: [u8; 5] = [b't', b'r', b'u', b'e', 0];
+                let mut offset: usize = 1;
+                self.scratch.clear();
+                match try!(self.read.parse_reserved_or_symbol(
+                    &mut self.scratch,
+                    &mut offset,
+                    reserved_len,
+                    &reserved,
+                )) {
+                    ParseDecision::Reserved => visitor.visit_bool(true),
+                    ParseDecision::Symbol => match try!(self.read.parse_symbol_offset(&mut self.scratch, offset)) {
+                        Reference::Borrowed(s) => {
+                            visitor.visit_map(SymbolDeserializer {
+                                value: s
+                            })
+                        }
+                        Reference::Copied(_) => unreachable!()
+                    }
+                }
+            }
+            b'f' => {
+                self.eat_char();
+                let reserved_len: usize = 5;
+                let reserved: [u8; 5] = [b'f', b'a', b'l', b's', b'e'];
+                let mut offset: usize = 1;
+                self.scratch.clear();
+                match try!(self.read.parse_reserved_or_symbol(
+                    &mut self.scratch,
+                    &mut offset,
+                    reserved_len,
+                    &reserved,
+                )) {
+                    ParseDecision::Reserved => visitor.visit_bool(false),
+                    ParseDecision::Symbol => match try!(self.read.parse_symbol_offset(&mut self.scratch, offset)) {
+                        Reference::Borrowed(s) => {
+                            visitor.visit_map(SymbolDeserializer {
+                                value: s
+                            })
+                        }
+                        Reference::Copied(_) => unreachable!()
+                    }
+                }
+            }
+            b'-' => {
+                self.eat_char();
+                try!(self.parse_any_number(false)).visit(visitor)
+            }
+            b':' => {
+                self.eat_char();
+                self.scratch.clear();
+                match try!(self.read.parse_keyword(&mut self.scratch)) {
+                    Reference::Borrowed(s) => {
+                        visitor.visit_map(KeywordDeserializer {
+                            value: s
+                        })
+                    }
+                    Reference::Copied(s) => {
+                        // Keywords are always Reference::Borrowed because no escape sequence
+                        // to deal with as was the case with strings
+                        unreachable!()
+                    }
+                }
+            }
+            b'0'...b'9' => try!(self.parse_any_number(true)).visit(visitor),
+            b'"' => {
+                self.eat_char();
+                self.scratch.clear();
+                match try!(self.read.parse_str(&mut self.scratch)) {
+                    Reference::Borrowed(s) => visitor.visit_borrowed_str(s),
+                    Reference::Copied(s) => visitor.visit_str(s),
+                }
+            }
+            b'[' => {
+                self.remaining_depth -= 1;
+                if self.remaining_depth == 0 {
+                    return Err(self.peek_error(ErrorCode::RecursionLimitExceeded));
+                }
+
+                self.eat_char();
+                let ret = visitor.visit_seq(SeqAccess::new(self));
+
+                self.remaining_depth += 1;
+
+                match (ret, self.end_seq()) {
+                    (Ok(ret), Ok(())) => Ok(ret),
+                    (Err(err), _) | (_, Err(err)) => Err(err),
+                }
+            }
+            b'(' => {
+                self.remaining_depth -= 1;
+                if self.remaining_depth == 0 {
+                    return Err(self.peek_error(ErrorCode::RecursionLimitExceeded));
+                }
+
+                self.eat_char();
+                let ret = visitor.visit_list(ListAccess::new(self));
+//
+
+                self.remaining_depth += 1;
+                // todo. return Value::List ...
+//                match ret {
+//                    Ok(x)=> match x {
+//                        Value::Vector(x)=>println!("{:?}",x)
+//                    }
+//                }
+
+                match (ret, self.end_list()) {
+                    (Ok(ret), Ok(())) => Ok(ret),
+                    (Err(err), _) | (_, Err(err)) => Err(err),
+                }
+            }
+            b'{' => {
+                self.remaining_depth -= 1;
+                if self.remaining_depth == 0 {
+                    return Err(self.peek_error(ErrorCode::RecursionLimitExceeded));
+                }
+
+                self.eat_char();
+                let ret = visitor.visit_map(MapAccess::new(self));
+
+                self.remaining_depth += 1;
+
+                match (ret, self.end_map()) {
+                    (Ok(ret), Ok(())) => Ok(ret),
+                    (Err(err), _) | (_, Err(err)) => Err(err),
+                }
+            }
+            c => {
+                self.scratch.clear();
+                match try!(self.read.parse_symbol(&mut self.scratch)) {
+                    Reference::Borrowed(s) => {
+                        visitor.visit_map(SymbolDeserializer {
+                            value: s
+                        })
+                    }
+                    Reference::Copied(_) => unreachable!()
+                }
+            }
+            _ => Err(self.peek_error(ErrorCode::ExpectedSomeValue)),
+        };
+
+        match value {
+            Ok(value) => Ok(value),
+            // The de::Error impl creates errors with unknown line and column.
+            // Fill in the position here by looking at the current index in the
+            // input. There is no way to tell whether this should call `error`
+            // or `peek_error` so pick the one that seems correct more often.
+            // Worst case, the position is off by one character.
+            Err(err) => Err(self.fix_position(err)),
+        }
+    }
+
+    fn deserialize_list<V>(self, visitor: V)
+        -> Result<V::Value> where
+        V: EDNVisitor<'de> {
+        unimplemented!()
+    }
+}
+
+
 impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
     type Error = Error;
 
     #[inline]
     fn deserialize_any<V>(self, visitor: V) -> Result<V::Value>
         where
-            V: de::Visitor<'de>,
+            V: //EDNVisitor<'de>+
+            de::Visitor<'de>,
     {
         let peek = match try!(self.parse_whitespace()) {
             Some(b) => b,
@@ -2275,13 +2498,17 @@ impl<'de, R, T> Iterator for StreamDeserializer<'de, R, T>
 
 //////////////////////////////////////////////////////////////////////////////
 
+// called by from_str with a StrRead, with IoRead, SliceRead from others
+// requires return type implement de::Deserialize
+// and invokes de::Deserialize::deserialize, which
 fn from_trait<'de, R, T>(read: R) -> Result<T>
     where
         R: Read<'de>,
-        T: de::Deserialize<'de>,
+        T: EDNDeserialize<'de> + de::Deserialize<'de>,
 {
     let mut de = Deserializer::new(read);
-    let value = try!(de::Deserialize::deserialize(&mut de));
+//    let value = try!(de::Deserialize::deserialize(&mut de));
+    let value = try!(EDNDeserialize::deserialize(&mut de));
 
     // Make sure the whole stream has been consumed.
     try!(de.end());
@@ -2352,7 +2579,7 @@ fn from_trait<'de, R, T>(read: R) -> Result<T>
 pub fn from_reader<R, T>(rdr: R) -> Result<T>
     where
         R: io::Read,
-        T: de::DeserializeOwned,
+        T: EDNDeserializeOwned + de::DeserializeOwned,
 {
     from_trait(read::IoRead::new(rdr))
 }
@@ -2397,7 +2624,7 @@ pub fn from_reader<R, T>(rdr: R) -> Result<T>
 /// type.
 pub fn from_slice<'a, T>(v: &'a [u8]) -> Result<T>
     where
-        T: de::Deserialize<'a>,
+        T: EDNDeserialize<'a> + de::Deserialize<'a>,
 {
     from_trait(read::SliceRead::new(v))
 }
@@ -2442,7 +2669,7 @@ pub fn from_slice<'a, T>(v: &'a [u8]) -> Result<T>
 /// type.
 pub fn from_str<'a, T>(s: &'a str) -> Result<T>
     where
-        T: de::Deserialize<'a>,
+        T: EDNDeserialize<'a> + de::Deserialize<'a>,
 {
     from_trait(read::StrRead::new(s))
 }

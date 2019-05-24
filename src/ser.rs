@@ -331,6 +331,7 @@ where
 
     #[inline]
     fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq> {
+        println!("ser seq");
         if len == Some(0) {
             try!(self
                 .formatter
@@ -2236,6 +2237,26 @@ pub trait Formatter {
             W: io::Write,
     {
         writer.write_all(b"]")
+    }
+
+    /// Called before every list.  Writes a `(` to the specified
+        /// writer.
+    #[inline]
+    fn begin_list<W: ?Sized>(&mut self, writer: &mut W) -> io::Result<()>
+        where
+            W: io::Write,
+    {
+        writer.write_all(b"(")
+    }
+
+    /// Called after every list.  Writes a `)` to the specified
+    /// writer.
+    #[inline]
+    fn end_list<W: ?Sized>(&mut self, writer: &mut W) -> io::Result<()>
+        where
+            W: io::Write,
+    {
+        writer.write_all(b")")
     }
 
     /// Called before every vector value.  Writes a `,` if needed to

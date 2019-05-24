@@ -14,6 +14,92 @@ use map::Map;
 use number::Number;
 use value::{to_value, Value};
 
+
+//trait SerializeEDN: ::serde::Serialize {
+//    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+//        where
+//            S: EDNSerializer + ::serde::Serializer;
+//
+//}
+//
+//trait EDNSerializer
+////: ::serde::Serializer
+//{
+//   fn serialize_list(&self)->bool;
+//
+//}
+//
+//trait Ser: EDNSerializer + ::serde::Serializer {}
+//
+//impl SerializeEDN for Value {
+//    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+//        where S: EDNSerializer + ::serde::Serializer
+//    {
+//        serializer.serialize_list();
+//        unimplemented!()
+//    }
+//}
+//struct ValueSerializer;
+//
+//impl<ValueSerializer: ::serde::Serializer> Ser for ValueSerializer {
+//
+//}
+trait OnOff {
+    fn set_onoff(&self, b: bool) {
+        println!("OnOff Default");
+    }
+}
+
+trait Brightness {
+    fn set_brightness(&self, brightness: i32) {
+        println!("Brightness Default");
+    }
+    fn set_onoff(&self,b:bool) {
+        println!("Brightness set on off");
+    }
+}
+
+//Now any type which implements 'Light' should implement 'OnOff'
+//& 'Brightness' as well
+trait Light: OnOff + Brightness{ }
+
+struct MyLight{
+    state: bool
+}
+
+//impl <MyLight: OnOff + Brightness>Light for MyLight{}
+//impl Light for MyLight{
+//
+//}
+impl OnOff for MyLight{}
+impl Brightness for MyLight{
+    fn set_brightness(&self, brightness: i32){
+        println!("Brightness = {}", brightness);
+    }
+}
+
+
+#[test]
+fn main(){
+
+    let my_light = MyLight{state: false};
+
+//    my_light.set_onoff(true);
+    Brightness::set_onoff(&my_light,true);
+    my_light.set_brightness(100);
+}
+
+//impl EDNSerializer for ValueSerializer {
+//
+//}
+//impl ::serde::Serializer for ValueSerializer {}
+
+//fn serialize_list<S>(serializer: S, v: &Vec<Value>)
+////    where S: ::serde::Serializer
+//where S: ::ser::Serializer
+//{
+//    serializer.
+//}
 impl Serialize for Value {
     #[inline]
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -26,7 +112,11 @@ impl Serialize for Value {
             Value::Number(ref n) => n.serialize(serializer),
             Value::String(ref s) => serializer.serialize_str(s),
             Value::Vector(ref v) => v.serialize(serializer),
-            Value::List(ref v) => v.serialize(serializer),
+            Value::List(ref v) => {
+                println!("ser list?");
+//                serialize_list(serializer,v)
+                v.serialize(serializer)
+            },
             Value::Object(ref m) => {
                 use serde::ser::SerializeMap;
                 let mut map = try!(serializer.serialize_map(Some(m.len())));
@@ -202,6 +292,7 @@ impl serde::Serializer for Serializer {
     }
 
     fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq, Error> {
+        println!("ser main serialize seq");
         Ok(SerializeVec {
             vec: Vec::with_capacity(len.unwrap_or(0)),
         })

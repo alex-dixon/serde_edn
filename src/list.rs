@@ -127,7 +127,7 @@ impl<'de> de::Deserialize<'de> for ListKey {
 // Not public API. Should be pub(crate).
 #[doc(hidden)]
 pub struct ListDeserializer<'de> {
-    pub value: &'de str,
+    pub value: &'de Vec<Value>,
 //    pub value: Option<String>,
 }
 

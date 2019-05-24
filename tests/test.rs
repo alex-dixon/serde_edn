@@ -1384,8 +1384,10 @@ fn test_parse_keyword() {
     println!("my notfalse {}", mynotfalse);
     assert_eq!(mynotfalse, Value::Symbol(Symbol::from_str("falsenot").unwrap()));
 
-    let list  = Value::from_str("()");
-    println!("my list {:?}", list);
+    let list  = Value::from_str("()").unwrap();
+    format!("{}",&list);
+//    println!("my list {:?}", list);
+    println!("my list plain {}", &list);
 
 //    println!("my symbol {:?} ",nile);
     assert_eq!(nile, Value::Symbol(nilesym));

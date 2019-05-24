@@ -525,6 +525,7 @@ impl<'a> SliceRead<'a> {
 
                     // not a reserved word but matches the reserved word sequence
                     // up until offset
+                    *offset += 1;
                     scratch.extend_from_slice(&reserved_bytes[0..*offset]);
                     scratch.extend_from_slice(&[v]);
                     break Ok(ParseDecision::Symbol)
@@ -558,6 +559,7 @@ impl<'a> SliceRead<'a> {
         // Index of the first byte not yet copied into the scratch space.
         println!("index {}",self.index);
         println!("offset {}",offset);
+        println!("scratch {:?}",scratch);
         let mut start = self.index-offset;
 
         loop {
