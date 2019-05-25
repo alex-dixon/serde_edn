@@ -18,6 +18,7 @@ use serde::ser::{self, Impossible, Serialize};
 
 use itoa;
 use ryu;
+use edn_ser::{EDNSerialize, EDNSerializer, SerializeList};
 
 /// A structure for serializing Rust values into edn.
 pub struct Serializer<W, F = CompactFormatter> {
@@ -66,6 +67,44 @@ where
     #[inline]
     pub fn into_inner(self) -> W {
         self.writer
+    }
+}
+impl<'a, W, F> EDNSerializer for &'a mut Serializer<W, F>
+    where
+        W: io::Write,
+        F: Formatter,
+{
+//    type Ok = ();
+    type Error = Error;
+
+    type SerializeL = Compound<'a, W, F>;
+
+    #[inline]
+    fn serialize_list(self, len: Option<usize>) -> Result<Self::SerializeL> {
+        println!("ser list");
+        if len == Some(0) {
+            try!(self
+                .formatter
+                .begin_list(&mut self.writer)
+                .map_err(Error::io));
+            try!(self
+                .formatter
+                .end_list(&mut self.writer)
+                .map_err(Error::io));
+            Ok(Compound::Map {
+                ser: self,
+                state: State::Empty,
+            })
+        } else {
+            try!(self
+                .formatter
+                .begin_list(&mut self.writer)
+                .map_err(Error::io));
+            Ok(Compound::Map {
+                ser: self,
+                state: State::First,
+            })
+        }
     }
 }
 
@@ -238,9 +277,10 @@ where
         use serde::ser::SerializeSeq;
         let mut seq = try!(self.serialize_seq(Some(value.len())));
         for byte in value {
-            try!(seq.serialize_element(byte));
+            try!(ser::SerializeSeq::serialize_element(&mut seq,byte));
+//            try!(seq.serialize_element(byte));
         }
-        seq.end()
+        ser::SerializeSeq::end(seq)
     }
 
     #[inline]
@@ -331,7 +371,8 @@ where
 
     #[inline]
     fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq> {
-        println!("ser seq");
+        println!("ser/serialize_seq");
+//        unreachable!();
         if len == Some(0) {
             try!(self
                 .formatter
@@ -547,6 +588,64 @@ pub enum Compound<'a, W: 'a, F: 'a> {
     Symbol { ser: &'a mut Serializer<W, F> },
 }
 
+impl<'a, W, F> SerializeList for Compound<'a, W, F>
+    where
+        W: io::Write,
+        F: Formatter,
+{
+    type Ok = ();
+    type Error = Error;
+
+    #[inline]
+    fn serialize_element<T: ?Sized>(&mut self, value: &T) -> Result<()>
+        where
+//            T: EDNSerialize,
+            T: Serialize,
+    {
+        match *self {
+            Compound::Map {
+                ref mut ser,
+                ref mut state,
+            } => {
+                try!(ser
+                    .formatter
+                    .begin_vector_value(&mut ser.writer, *state == State::First)
+                    .map_err(Error::io));
+                *state = State::Rest;
+                try!(value.serialize(&mut **ser));
+                try!(ser
+                    .formatter
+                    .end_vector_value(&mut ser.writer)
+                    .map_err(Error::io));
+                Ok(())
+            }
+            #[cfg(feature = "arbitrary_precision")]
+            Compound::Number { .. } => unreachable!(),
+            #[cfg(feature = "raw_value")]
+            Compound::RawValue { .. } => unreachable!(),
+            _ => unreachable!()
+        }
+    }
+
+    #[inline]
+    fn end(self) -> Result<()> {
+        match self {
+            Compound::Map { ser, state } => {
+                match state {
+                    State::Empty => {}
+                    _ => try!(ser.formatter.end_vector(&mut ser.writer).map_err(Error::io)),
+                }
+                Ok(())
+            }
+            #[cfg(feature = "arbitrary_precision")]
+            Compound::Number { .. } => unreachable!(),
+            #[cfg(feature = "raw_value")]
+            Compound::RawValue { .. } => unreachable!(),
+            _ => unreachable!()
+        }
+    }
+}
+
 impl<'a, W, F> ser::SerializeSeq for Compound<'a, W, F>
 where
     W: io::Write,
@@ -581,8 +680,7 @@ where
             Compound::Number { .. } => unreachable!(),
             #[cfg(feature = "raw_value")]
             Compound::RawValue { .. } => unreachable!(),
-            Compound::Keyword { .. } => unreachable!(),
-            Compound::Symbol { .. } => unreachable!(),
+            _ => unreachable!()
         }
     }
 
@@ -600,8 +698,7 @@ where
             Compound::Number { .. } => unreachable!(),
             #[cfg(feature = "raw_value")]
             Compound::RawValue { .. } => unreachable!(),
-            Compound::Keyword { .. } => unreachable!(),
-            Compound::Symbol { .. } => unreachable!(),
+            _ => unreachable!()
         }
     }
 }
@@ -685,8 +782,7 @@ where
             Compound::Number { .. } => unreachable!(),
             #[cfg(feature = "raw_value")]
             Compound::RawValue { .. } => unreachable!(),
-            Compound::Keyword { .. } => unreachable!(),
-            Compound::Symbol { .. } => unreachable!(),
+            _ => unreachable!()
         }
     }
 }
@@ -727,8 +823,7 @@ where
             Compound::Number { .. } => unreachable!(),
             #[cfg(feature = "raw_value")]
             Compound::RawValue { .. } => unreachable!(),
-            Compound::Keyword { .. } => unreachable!(),
-            Compound::Symbol { .. } => unreachable!(),
+            _ => unreachable!(),
         }
     }
 
@@ -754,8 +849,7 @@ where
             Compound::Number { .. } => unreachable!(),
             #[cfg(feature = "raw_value")]
             Compound::RawValue { .. } => unreachable!(),
-            Compound::Keyword { .. } => unreachable!(),
-            Compound::Symbol { .. } => unreachable!(),
+            _ => unreachable!(),
         }
     }
 
@@ -773,8 +867,7 @@ where
             Compound::Number { .. } => unreachable!(),
             #[cfg(feature = "raw_value")]
             Compound::RawValue { .. } => unreachable!(),
-            Compound::Keyword { .. } => unreachable!(),
-            Compound::Symbol { .. } => unreachable!(),
+            _ => unreachable!()
         }
     }
 }
@@ -868,8 +961,7 @@ where
             Compound::Number { .. } => unreachable!(),
             #[cfg(feature = "raw_value")]
             Compound::RawValue { .. } => unreachable!(),
-            Compound::Keyword { .. } => unreachable!(),
-            Compound::Symbol { .. } => unreachable!(),
+            _ => unreachable!()
         }
     }
 
@@ -892,8 +984,7 @@ where
             Compound::Number { .. } => unreachable!(),
             #[cfg(feature = "raw_value")]
             Compound::RawValue { .. } => unreachable!(),
-            Compound::Keyword { .. } => unreachable!(),
-            Compound::Symbol { .. } => unreachable!(),
+            _ => unreachable!(),
         }
     }
 }
@@ -2591,10 +2682,10 @@ static ESCAPE: [u8; 256] = [
 pub fn to_writer<W, T: ?Sized>(writer: W, value: &T) -> Result<()>
 where
     W: io::Write,
-    T: Serialize,
+    T: EDNSerialize,
 {
     let mut ser = Serializer::new(writer);
-    try!(value.serialize(&mut ser));
+    try!(EDNSerialize::serialize(value,&mut ser));
     Ok(())
 }
 
@@ -2609,10 +2700,10 @@ where
 pub fn to_writer_pretty<W, T: ?Sized>(writer: W, value: &T) -> Result<()>
 where
     W: io::Write,
-    T: Serialize,
+    T: EDNSerialize,
 {
     let mut ser = Serializer::pretty(writer);
-    try!(value.serialize(&mut ser));
+    try!(EDNSerialize::serialize(value, &mut ser));
     Ok(())
 }
 
@@ -2625,7 +2716,7 @@ where
 #[inline]
 pub fn to_vec<T: ?Sized>(value: &T) -> Result<Vec<u8>>
 where
-    T: Serialize,
+    T: EDNSerialize,
 {
     let mut writer = Vec::with_capacity(128);
     try!(to_writer(&mut writer, value));
@@ -2641,7 +2732,7 @@ where
 #[inline]
 pub fn to_vec_pretty<T: ?Sized>(value: &T) -> Result<Vec<u8>>
 where
-    T: Serialize,
+    T: EDNSerialize,
 {
     let mut writer = Vec::with_capacity(128);
     try!(to_writer_pretty(&mut writer, value));
@@ -2657,7 +2748,7 @@ where
 #[inline]
 pub fn to_string<T: ?Sized>(value: &T) -> Result<String>
 where
-    T: Serialize,
+    T: EDNSerialize,
 {
     let vec = try!(to_vec(value));
     let string = unsafe {
@@ -2676,7 +2767,7 @@ where
 #[inline]
 pub fn to_string_pretty<T: ?Sized>(value: &T) -> Result<String>
 where
-    T: Serialize,
+    T: EDNSerialize,
 {
     let vec = try!(to_vec_pretty(value));
     let string = unsafe {

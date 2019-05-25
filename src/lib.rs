@@ -379,6 +379,7 @@ pub mod ser;
 pub mod value;
 pub mod visitor;
 pub mod edn_de;
+pub mod edn_ser;
 
 mod iter;
 mod number;

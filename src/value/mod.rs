@@ -127,6 +127,7 @@ pub use self::index::Index;
 use self::ser::Serializer;
 pub use symbol::Symbol;
 pub use keyword::Keyword;
+use edn_ser::EDNSerialize;
 
 /// Represents any valid edn value.
 ///

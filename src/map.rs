@@ -27,6 +27,7 @@ use std::collections::{btree_map, BTreeMap};
 
 #[cfg(feature = "preserve_order")]
 use indexmap::{self, IndexMap};
+use edn_ser::{EDNSerialize, EDNSerializer};
 
 /// Represents a edn key/value type.
 pub struct Map<K, V> {

@@ -122,9 +122,13 @@ fn main() {
 //    let x = Value::from_str(r#"(foo "bar")"#);
 //    let x = Value::from_str(r#"(false (bar"baz"))"#);
     let x = Value::from_str(r#"(println(println[[true]"hi"]))"#).unwrap();
+//    let x = Value::from_str(r#"(println(println[(true)"hi"]))"#).unwrap();
+
     let k = Value::from_str(":foo");
     println!("x {:?}",&x);
     println!("x {}",&x);
+    println!("one more again");
+    println!("{}",format!("{}",&x));
     println!("k {:?}",k.unwrap());
     assert_eq!(false,true)
 }

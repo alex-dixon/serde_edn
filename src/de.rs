@@ -738,6 +738,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             None => Err(self.peek_error(ErrorCode::ExpectedWhitespace))
         }
     }
+
     fn end_list(&mut self) -> Result<()> {
         match try!(self.parse_whitespace()) {
             Some(b')') => {
@@ -1186,12 +1187,6 @@ impl<'de, 'a, R: Read<'de>> EDNDeserializer<'de> for &'a mut Deserializer<R> {
 //
 
                 self.remaining_depth += 1;
-                // todo. return Value::List ...
-//                match ret {
-//                    Ok(x)=> match x {
-//                        Value::Vector(x)=>println!("{:?}",x)
-//                    }
-//                }
 
                 match (ret, self.end_list()) {
                     (Ok(ret), Ok(())) => Ok(ret),
@@ -1256,6 +1251,7 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
             V: //EDNVisitor<'de>+
             de::Visitor<'de>,
     {
+//        unreachable!("serde::Deserializer::deserialize_any");
         let peek = match try!(self.parse_whitespace()) {
             Some(b) => b,
             None => {

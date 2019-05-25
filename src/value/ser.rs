@@ -13,96 +13,189 @@ use error::{Error, ErrorCode};
 use map::Map;
 use number::Number;
 use value::{to_value, Value};
+use edn_ser::{EDNSerializer, EDNSerialize, SerializeList};
 
+impl EDNSerialize for Value {
+    #[inline]
+    fn serialize<S>(&self, serializer: S) -> Result<<S as serde::Serializer>::Ok, <S as serde::Serializer>::Error>
+    where
+        S: EDNSerializer //+ serde::Serializer,
+    {
+        match *self {
+            Value::Nil => serializer.serialize_unit(),
+            Value::Bool(b) => serializer.serialize_bool(b),
+            Value::Number(ref n) => n.serialize(serializer),
+            Value::String(ref s) => serializer.serialize_str(s),
+            Value::Vector(ref v) => v.serialize(serializer),
+            Value::List(ref v) => {
+//                v.serialize(ListSerializer{l: Vec::with_capacity()})
+                println!("EDNSerialize for Value,  ser list ref");
+                use edn_ser::SerializeList;
+                let v2 = v.into_iter();
+                let mut s = try!(serializer.serialize_list(Some(v.len())));
+                for x in v2 {
+                    try!(s.serialize_element(x))
+                }
+                s.end()
+            },
+            Value::Object(ref m) => {
+                use serde::ser::SerializeMap;
+                let mut map = try!(serializer.serialize_map(Some(m.len())));
+                for (k, v) in m {
+                    try!(map.serialize_key(k));
+                    try!(map.serialize_value(v));
+                }
+                map.end()
+            }
+            Value::Keyword(ref kw) => kw.serialize(serializer),
+            Value::Symbol(ref sym) => sym.serialize(serializer)
+        }
+    }
+}
 
-//trait SerializeEDN: ::serde::Serialize {
-//    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-//        where
-//            S: EDNSerializer + ::serde::Serializer;
-//
-//}
-//
-//trait EDNSerializer
-////: ::serde::Serializer
-//{
-//   fn serialize_list(&self)->bool;
-//
-//}
-//
-//trait Ser: EDNSerializer + ::serde::Serializer {}
-//
-//impl SerializeEDN for Value {
-//    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-//        where S: EDNSerializer + ::serde::Serializer
-//    {
-//        serializer.serialize_list();
-//        unimplemented!()
+//struct ListSerialize {x: Vec<Value>}
+//struct ListSerializer;
+//impl serde::Serialize for  ListSerialize {
+//    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where
+//        S: serde::Serializer {
+////        serializer.serialize_seq()
 //    }
 //}
-//struct ValueSerializer;
+//impl serde::Serializer for ListSerializer {
+//    type Ok = Value;
+//    type Error = Error;
+//    type SerializeSeq = SerializeList<Ok=Self::Ok, Error=Self::Error>;
+////    type SerializeTuple = ();
+////    type SerializeTupleStruct = ();
+////    type SerializeTupleVariant = ();
+////    type SerializeMap = ();
+////    type SerializeStruct = ();
+////    type SerializeStructVariant = ();
 //
-//impl<ValueSerializer: ::serde::Serializer> Ser for ValueSerializer {
+//    fn serialize_bool(self, v: bool) -> Result<Self::Ok, Self::Error> {
+//        unimplemented!()
+//    }
 //
-//}
-trait OnOff {
-    fn set_onoff(&self, b: bool) {
-        println!("OnOff Default");
-    }
-}
-
-trait Brightness {
-    fn set_brightness(&self, brightness: i32) {
-        println!("Brightness Default");
-    }
-    fn set_onoff(&self,b:bool) {
-        println!("Brightness set on off");
-    }
-}
-
-//Now any type which implements 'Light' should implement 'OnOff'
-//& 'Brightness' as well
-trait Light: OnOff + Brightness{ }
-
-struct MyLight{
-    state: bool
-}
-
-//impl <MyLight: OnOff + Brightness>Light for MyLight{}
-//impl Light for MyLight{
+//    fn serialize_i8(self, v: i8) -> Result<Self::Ok, Self::Error> {
+//        unimplemented!()
+//    }
 //
-//}
-impl OnOff for MyLight{}
-impl Brightness for MyLight{
-    fn set_brightness(&self, brightness: i32){
-        println!("Brightness = {}", brightness);
-    }
-}
-
-
-#[test]
-fn main(){
-
-    let my_light = MyLight{state: false};
-
-//    my_light.set_onoff(true);
-    Brightness::set_onoff(&my_light,true);
-    my_light.set_brightness(100);
-}
-
-//impl EDNSerializer for ValueSerializer {
+//    fn serialize_i16(self, v: i16) -> Result<Self::Ok, Self::Error> {
+//        unimplemented!()
+//    }
 //
+//    fn serialize_i32(self, v: i32) -> Result<Self::Ok, Self::Error> {
+//        unimplemented!()
+//    }
+//
+//    fn serialize_i64(self, v: i64) -> Result<Self::Ok, Self::Error> {
+//        unimplemented!()
+//    }
+//
+//    fn serialize_u8(self, v: u8) -> Result<Self::Ok, Self::Error> {
+//        unimplemented!()
+//    }
+//
+//    fn serialize_u16(self, v: u16) -> Result<Self::Ok, Self::Error> {
+//        unimplemented!()
+//    }
+//
+//    fn serialize_u32(self, v: u32) -> Result<Self::Ok, Self::Error> {
+//        unimplemented!()
+//    }
+//
+//    fn serialize_u64(self, v: u64) -> Result<Self::Ok, Self::Error> {
+//        unimplemented!()
+//    }
+//
+//    fn serialize_f32(self, v: f32) -> Result<Self::Ok, Self::Error> {
+//        unimplemented!()
+//    }
+//
+//    fn serialize_f64(self, v: f64) -> Result<Self::Ok, Self::Error> {
+//        unimplemented!()
+//    }
+//
+//    fn serialize_char(self, v: char) -> Result<Self::Ok, Self::Error> {
+//        unimplemented!()
+//    }
+//
+//    fn serialize_str(self, v: &str) -> Result<Self::Ok, Self::Error> {
+//        unimplemented!()
+//    }
+//
+//    fn serialize_bytes(self, v: &[u8]) -> Result<Self::Ok, Self::Error> {
+//        unimplemented!()
+//    }
+//
+//    fn serialize_none(self) -> Result<Self::Ok, Self::Error> {
+//        unimplemented!()
+//    }
+//
+//    fn serialize_some<T: ?Sized>(self, value: &T) -> Result<Self::Ok, Self::Error> where
+//        T: Serialize {
+//        unimplemented!()
+//    }
+//
+//    fn serialize_unit(self) -> Result<Self::Ok, Self::Error> {
+//        unimplemented!()
+//    }
+//
+//    fn serialize_unit_struct(self, name: &'static str) -> Result<Self::Ok, Self::Error> {
+//        unimplemented!()
+//    }
+//
+//    fn serialize_unit_variant(self, name: &'static str, variant_index: u32, variant: &'static str) -> Result<Self::Ok, Self::Error> {
+//        unimplemented!()
+//    }
+//
+//    fn serialize_newtype_struct<T: ?Sized>(self, name: &'static str, value: &T) -> Result<Self::Ok, Self::Error> where
+//        T: Serialize {
+//        unimplemented!()
+//    }
+//
+//    fn serialize_newtype_variant<T: ?Sized>(self, name: &'static str, variant_index: u32, variant: &'static str, value: &T) -> Result<Self::Ok, Self::Error> where
+//        T: Serialize {
+//        unimplemented!()
+//    }
+//
+//    fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq, Self::Error> {
+//        unimplemented!()
+//    }
+//
+//    fn serialize_tuple(self, len: usize) -> Result<Self::SerializeTuple, Self::Error> {
+//        unimplemented!()
+//    }
+//
+//    fn serialize_tuple_struct(self, name: &'static str, len: usize) -> Result<Self::SerializeTupleStruct, Self::Error> {
+//        unimplemented!()
+//    }
+//
+//    fn serialize_tuple_variant(self, name: &'static str, variant_index: u32, variant: &'static str, len: usize) -> Result<Self::SerializeTupleVariant, Self::Error> {
+//        unimplemented!()
+//    }
+//
+//    fn serialize_map(self, len: Option<usize>) -> Result<Self::SerializeMap, Self::Error> {
+//        unimplemented!()
+//    }
+//
+//    fn serialize_struct(self, name: &'static str, len: usize) -> Result<Self::SerializeStruct, Self::Error> {
+//        unimplemented!()
+//    }
+//
+//    fn serialize_struct_variant(self, name: &'static str, variant_index: u32, variant: &'static str, len: usize) -> Result<Self::SerializeStructVariant, Self::Error> {
+//        unimplemented!()
+//    }
+//
+////    fn collect_str<T: ?Sized>(self, value: &T) -> Result<Self::Ok, Self::Error> where
+////        T: Display {
+////        unimplemented!()
+////    }
 //}
-//impl ::serde::Serializer for ValueSerializer {}
 
-//fn serialize_list<S>(serializer: S, v: &Vec<Value>)
-////    where S: ::serde::Serializer
-//where S: ::ser::Serializer
-//{
-//    serializer.
-//}
 impl Serialize for Value {
     #[inline]
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, <S as ::serde::Serializer>::Error>
     where
         S: ::serde::Serializer,
     {
@@ -113,9 +206,19 @@ impl Serialize for Value {
             Value::String(ref s) => serializer.serialize_str(s),
             Value::Vector(ref v) => v.serialize(serializer),
             Value::List(ref v) => {
-                println!("ser list?");
-//                serialize_list(serializer,v)
                 v.serialize(serializer)
+//                serialize_list(serializer,v)
+//                ListSerialize{x:v}.serialize(ListSerializer)
+//                v.serialize(ListSerializer)
+//                println!("serde::Serialize for value,  ser list ref");
+//                use edn_ser::SerializeList;
+//                let v2 = v.into_iter();
+////                <Self as EDNSerializer>::serialize_list(Some(v.len()))
+//                let mut s = try!(EDNSerializer::serialize_list(serializer,Some(v.len())));
+//                for x in v2 {
+//                    try!(s.serialize_element(x))
+//                }
+//                s.end()
             },
             Value::Object(ref m) => {
                 use serde::ser::SerializeMap;
@@ -133,6 +236,15 @@ impl Serialize for Value {
 }
 
 pub struct Serializer;
+
+impl EDNSerializer for Serializer  {
+    type Error = Error;
+    type SerializeL = SerializeVec;
+
+    fn serialize_list(self, len: Option<usize>) -> Result<SerializeVec,<Self as EDNSerializer>::Error> {
+        Ok(SerializeVec {vec:Vec::with_capacity(len.unwrap_or(0))})
+    }
+}
 
 impl serde::Serializer for Serializer {
     type Ok = Value;
@@ -292,7 +404,7 @@ impl serde::Serializer for Serializer {
     }
 
     fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq, Error> {
-        println!("ser main serialize seq");
+        println!("value ser serialize_seq");
         Ok(SerializeVec {
             vec: Vec::with_capacity(len.unwrap_or(0)),
         })
@@ -362,6 +474,23 @@ impl serde::Serializer for Serializer {
 
 pub struct SerializeVec {
     vec: Vec<Value>,
+}
+
+impl SerializeList for SerializeVec {
+    type Ok = Value;
+    type Error = Error;
+
+    fn serialize_element<T: ?Sized>(&mut self, value: &T) -> Result<(), Error>
+        where
+            T: EDNSerialize,
+    {
+        self.vec.push(try!(to_value(&value)));
+        Ok(())
+    }
+
+    fn end(self) -> Result<Value, Error> {
+        Ok(Value::List(self.vec))
+    }
 }
 
 pub struct SerializeTupleVariant {
