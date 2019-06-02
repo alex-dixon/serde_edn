@@ -135,7 +135,7 @@ fn main() {
 //    let x = Value::from_str(r#"(false (bar"baz"))"#);
 //    let x = Value::from_str(r#"(println(println[[(true)]"hi"]))"#).unwrap();
 
-    let x = Value::from_str(r#"(println(println[[:foo [(true)]]"hi"]))"#).unwrap();
+    let x = Value::from_str(r#"(println(println[[:foo [(true 1 42.0)]]"hi"]))"#).unwrap();
 //    let x = Value::from_str(r#"(println(println[(true)"hi"]))"#).unwrap();
 
     let k = Value::from_str(":foo");
