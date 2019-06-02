@@ -33,6 +33,14 @@ use symbol::SymbolDeserializer;
 use edn_de::{EDNDeserialize, EDNDeserializer, EDNVisitor, EDNDeserializeOwned, EDNDeserializeSeed, EDNSeqAccess};
 use serde::Deserialize;
 
+//impl <'de,T> EDNDeserialize<'de> for T
+//where T: serde::de::Deserialize {
+//    fn deserialize<D>(deserializer: D) -> Result<Self> where
+//        D: EDNDeserializer<'de> {
+//        serde::de::Deserialize::deserialize(deserializer)
+//    }
+//}
+
 //////////////////////////////////////////////////////////////////////////////
 
 /// A structure that deserializes edn into Rust values.
@@ -1166,8 +1174,9 @@ impl<'de, 'a, R: Read<'de>> EDNDeserializer<'de> for &'a mut Deserializer<R> {
                     return Err(self.peek_error(ErrorCode::RecursionLimitExceeded));
                 }
 
+                println!("edn-de/vector");
                 self.eat_char();
-                let ret = visitor.visit_seq(SeqAccess::new(self));
+                let ret = visitor.visit_vector(SeqAccess::new(self));
 
                 self.remaining_depth += 1;
 
@@ -1379,16 +1388,18 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
                 if self.remaining_depth == 0 {
                     return Err(self.peek_error(ErrorCode::RecursionLimitExceeded));
                 }
+                println!("de/vector");
 
                 self.eat_char();
-                let ret = visitor.visit_seq(SeqAccess::new(self));
-
-                self.remaining_depth += 1;
-
-                match (ret, self.end_seq()) {
-                    (Ok(ret), Ok(())) => Ok(ret),
-                    (Err(err), _) | (_, Err(err)) => Err(err),
-                }
+                unreachable!()
+//                let ret = visitor.visit_seq(SeqAccess::new(self));
+//
+//                self.remaining_depth += 1;
+//
+//                match (ret, self.end_seq()) {
+//                    (Ok(ret), Ok(())) => Ok(ret),
+//                    (Err(err), _) | (_, Err(err)) => Err(err),
+//                }
             }
             b'(' => {
                 self.remaining_depth -= 1;
@@ -1396,24 +1407,24 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
                     return Err(self.peek_error(ErrorCode::RecursionLimitExceeded));
                 }
 
-                println!("serde::Deserialize was called");
+                println!("serde::Deserialize was called for `(` ...");
                 unreachable!();
                 self.eat_char();
-                let ret = visitor.visit_seq(SeqAccess::new(self));
+//                let ret = visitor.visit_seq(SeqAccess::new(self));
+////
 //
-
-                self.remaining_depth += 1;
-                // todo. return Value::List ...
-//                match ret {
-//                    Ok(x)=> match x {
-//                        Value::Vector(x)=>println!("{:?}",x)
-//                    }
+//                self.remaining_depth += 1;
+//                // todo. return Value::List ...
+////                match ret {
+////                    Ok(x)=> match x {
+////                        Value::Vector(x)=>println!("{:?}",x)
+////                    }
+////                }
+//
+//                match (ret, self.end_list()) {
+//                    (Ok(ret), Ok(())) => Ok(ret),
+//                    (Err(err), _) | (_, Err(err)) => Err(err),
 //                }
-
-                match (ret, self.end_list()) {
-                    (Ok(ret), Ok(())) => Ok(ret),
-                    (Err(err), _) | (_, Err(err)) => Err(err),
-                }
             }
             b'{' => {
                 self.remaining_depth -= 1;
@@ -1808,15 +1819,16 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
                     return Err(self.peek_error(ErrorCode::RecursionLimitExceeded));
                 }
 
-                self.eat_char();
-                let ret = visitor.visit_seq(SeqAccess::new(self));
-
-                self.remaining_depth += 1;
-
-                match (ret, self.end_seq()) {
-                    (Ok(ret), Ok(())) => Ok(ret),
-                    (Err(err), _) | (_, Err(err)) => Err(err),
-                }
+                unreachable!()
+//                self.eat_char();
+//                let ret = visitor.visit_seq(SeqAccess::new(self));
+//
+//                self.remaining_depth += 1;
+//
+//                match (ret, self.end_seq()) {
+//                    (Ok(ret), Ok(())) => Ok(ret),
+//                    (Err(err), _) | (_, Err(err)) => Err(err),
+//                }
             }
             _ => Err(self.peek_invalid_type(&visitor)),
         };
@@ -1906,15 +1918,16 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
                     return Err(self.peek_error(ErrorCode::RecursionLimitExceeded));
                 }
 
-                self.eat_char();
-                let ret = visitor.visit_seq(SeqAccess::new(self));
-
-                self.remaining_depth += 1;
-
-                match (ret, self.end_seq()) {
-                    (Ok(ret), Ok(())) => Ok(ret),
-                    (Err(err), _) | (_, Err(err)) => Err(err),
-                }
+                unreachable!()
+//                self.eat_char();
+//                let ret = visitor.visit_seq(SeqAccess::new(self));
+//
+//                self.remaining_depth += 1;
+//
+//                match (ret, self.end_seq()) {
+//                    (Ok(ret), Ok(())) => Ok(ret),
+//                    (Err(err), _) | (_, Err(err)) => Err(err),
+//                }
             }
             b'{' => {
                 self.remaining_depth -= 1;
@@ -2010,12 +2023,13 @@ impl<'a, R: 'a> SeqAccess<'a, R> {
     }
 }
 
-impl<'de, 'a, R: Read<'de> + 'a> de::SeqAccess<'de> for SeqAccess<'a, R> {
+//impl<'de, 'a, R: Read<'de> + 'a> de::SeqAccess<'de> for SeqAccess<'a, R> {
+    impl<'de, 'a, R: Read<'de> + 'a> EDNSeqAccess<'de> for SeqAccess<'a, R> {
     type Error = Error;
 
     fn next_element_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>>
         where
-            T: de::DeserializeSeed<'de>,
+            T: EDNDeserializeSeed<'de>,
     {
         let peek = match try!(self.de.parse_whitespace()) {
             Some(b']') => {
@@ -2029,6 +2043,7 @@ impl<'de, 'a, R: Read<'de> + 'a> de::SeqAccess<'de> for SeqAccess<'a, R> {
 
         match peek {
 //            Some(b']') => Err(self.de.peek_error(ErrorCode::TrailingComma)),
+//            Some(_) => Ok(Some(try!(seed.deserialize(&mut *self.de)))),
             Some(_) => Ok(Some(try!(seed.deserialize(&mut *self.de)))),
             None => Err(self.de.peek_error(ErrorCode::EofWhileParsingValue)),
         }

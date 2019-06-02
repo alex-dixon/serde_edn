@@ -185,6 +185,28 @@ impl<'de> EDNDeserialize<'de> for Value {
 
                 Ok(Value::List(vec))
             }
+
+            #[inline]
+            fn visit_vector<V>(self, mut visitor: V) -> Result<<Self as Visitor<'de>>::Value, V::Error>
+                where
+                    V: EDNSeqAccess<'de>,
+            {
+                let mut vec = Vec::new();
+
+                while let Some(elem) = try!(visitor.next_element()) {
+                    vec.push(elem);
+                }
+
+                Ok(Value::Vector(vec))
+            }
+            #[inline]
+            fn visit_keyword<E>(self, s: &str) -> Result<<Self as Visitor<'de>>::Value, E>
+                where
+                    E: serde::de::Error,
+            {
+
+                Ok(Value::Keyword(Keyword{ value: Some(String::from(s))}))
+            }
         }
 
         impl<'de> Visitor<'de> for ValueVisitor {

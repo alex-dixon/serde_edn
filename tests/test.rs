@@ -44,6 +44,7 @@ use serde_edn::{
     to_writer, Deserializer, Number, Value, Keyword,
 };
 use serde_edn::value::Symbol;
+use serde_edn::edn_ser::EDNSerialize;
 
 macro_rules! treemap {
     () => {
@@ -83,7 +84,7 @@ struct Outer {
 
 fn test_encode_ok<T>(errors: &[(T, &str)])
     where
-        T: PartialEq + Debug + ser::Serialize,
+        T: PartialEq + Debug + ser::Serialize + EDNSerialize,
 {
     for &(ref value, out) in errors {
         let out = out.to_string();

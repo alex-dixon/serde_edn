@@ -14,6 +14,18 @@ pub trait EDNVisitor<'de>: Sized + Visitor<'de> {
         unimplemented!()
 //        Err(Error::invalid_type(Unexpected::Seq, &self))
     }
+    fn visit_vector<A>(self, seq: A) -> Result<<Self as Visitor<'de>>::Value, A::Error>
+        where
+            A: EDNSeqAccess<'de>,
+    {
+        let _ = seq;
+        unimplemented!()
+//        Err(Error::invalid_type(Unexpected::Seq, &self))
+    }
+    fn  visit_keyword<E>(self,s:&str) -> Result<<Self as Visitor<'de>>::Value, E>
+    where E:serde::de::Error{
+        unimplemented!()
+    }
 }
 
 pub trait EDNDeserializer<'de>: Sized {
@@ -59,15 +71,15 @@ impl<'de, T> EDNDeserializeSeed<'de> for PhantomData<T>
 
     #[inline]
     fn deserialize<D>(self, deserializer: D) -> Result<T, <D as EDNDeserializer<'de>>::Error>
-        where
-            D: EDNDeserializer<'de>, //+ serde::Deserializer<'de>,
+        where D: EDNDeserializer<'de>,
+    //+ serde::Deserializer<'de>,
     {
         EDNDeserialize::deserialize(deserializer)
     }
 }
 
 pub trait EDNSeqAccess<'de> {
-//    type Error: Error;
+    //    type Error: Error;
     type Error;
 
     fn next_element_seed<T>(&mut self, seed: T) -> Result<Option<<T as EDNDeserializeSeed<'de>>::Value>, Self::Error>
@@ -121,14 +133,16 @@ impl<'de, 'a, A> EDNSeqAccess<'de> for &'a mut A
 fn main() {
 //    let x = Value::from_str(r#"(foo "bar")"#);
 //    let x = Value::from_str(r#"(false (bar"baz"))"#);
-    let x = Value::from_str(r#"(println(println[[true]"hi"]))"#).unwrap();
+//    let x = Value::from_str(r#"(println(println[[(true)]"hi"]))"#).unwrap();
+
+    let x = Value::from_str(r#"(println(println[[:foo [(true)]]"hi"]))"#).unwrap();
 //    let x = Value::from_str(r#"(println(println[(true)"hi"]))"#).unwrap();
 
     let k = Value::from_str(":foo");
-    println!("x {:?}",&x);
-    println!("x {}",&x);
+    println!("x {:?}", &x);
+    println!("x {}", &x);
     println!("one more again");
-    println!("{}",format!("{}",&x));
-    println!("k {:?}",k.unwrap());
-    assert_eq!(false,true)
+    println!("{}", format!("{}", &x));
+    println!("k {:?}", k.unwrap());
+    assert_eq!(false, true)
 }
