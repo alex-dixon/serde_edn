@@ -88,6 +88,14 @@ impl Default for ComplexTypes {
     }
 }
 
+fn round_trip(s: &str, v: Value) {
+    let a = Value::from_str(s).unwrap();
+    assert_eq!(a, v);
+
+    let b = to_string(&v).unwrap();
+    assert_eq!(b, s)
+}
+
 #[test]
 fn parse_list() {
     let st = SimpleTypes::default();
@@ -108,6 +116,71 @@ fn parse_list() {
                          Value::Vector(vec![st.keyword,
                                             Value::List(vec![st.symbol])])])
     )
+}
+
+const STR: SimpleStrings<'static> = SimpleStrings {
+    int: "42",
+    float: "42.3",
+    string: "\"foo\"",
+    keyword: ":foo",
+    symbol: "foo",
+};
+
+//#[derive(Clone)]
+struct SimpleStrings<'a> {
+    int: &'a str,
+    float: &'a str,
+    string: &'a str,
+    keyword: &'a str,
+    symbol: &'a str,
+}
+
+impl SimpleStrings<'static> {
+    fn values(self) -> Vec<&'static str> {
+        vec!(
+            self.symbol,
+            self.keyword,
+            self.string,
+            self.int,
+            self.float,
+        )
+    }
+}
+
+
+#[test]
+fn serialize_list() {
+    let st = SimpleTypes::default();
+    assert_eq!(
+        to_string(&Value::List(vec![])).unwrap(),
+        "()"
+    );
+
+    let vs = st.clone().values();
+    assert_eq!(
+        to_string(&Value::List(vs)).unwrap(),
+        r#"(println :foo "foo" 42 42.3)"#
+    );
+    // convenient but impl makes it harder to tell what went wrong
+    // leaving until it becomes a problem
+//    round_trip(r#"(println :foo "foo" 42 42.3)"#, Value::List(st.values()));
+    let st2 = SimpleTypes::default();
+    assert_eq!(
+        to_string(&Value::List(vec![st2.symbol.clone(),
+                                   Value::Vector(vec![st2.keyword,
+                                                      Value::List(vec![st2.symbol])])])
+        ).unwrap(),
+        r#"(println [:foo (println)])"#
+    );
+
+
+//    let st2 = SimpleTypes::default();
+//    let inside_vector = Value::from_str(r#"(println [:foo (println)])"#).unwrap();
+//    round_trip(r#"(println [:foo (println)])"#,
+//        Value::List(vec![st2.symbol.clone(),
+//                         Value::Vector(vec![st2.keyword,
+//                                            Value::List(vec![st2.symbol])])])
+//    )
 }
 
 #[test]

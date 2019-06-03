@@ -13,7 +13,7 @@ use error::{Error, ErrorCode};
 use map::Map;
 use number::Number;
 use value::{to_value, Value};
-use edn_ser::{EDNSerializer, EDNSerialize, SerializeList};
+use edn_ser::{EDNSerializer, EDNSerialize, SerializeList, SerializeVector};
 
 impl EDNSerialize for Value {
     #[inline]
@@ -26,7 +26,17 @@ impl EDNSerialize for Value {
             Value::Bool(b) => serializer.serialize_bool(b),
             Value::Number(ref n) => n.serialize(serializer),
             Value::String(ref s) => serializer.serialize_str(s),
-            Value::Vector(ref v) => v.serialize(serializer),
+            Value::Vector(ref v) => {
+//                v.serialize(serializer)
+//                println!("EDNSerialize for Value,  ser list ref");
+                use edn_ser::SerializeVector;
+                let v2 = v.into_iter();
+                let mut s = try!(serializer.serialize_vector(Some(v.len())));
+                for x in v2 {
+                    try!(s.serialize_element(x))
+                }
+                s.end()
+            },
             Value::List(ref v) => {
 //                v.serialize(ListSerializer{l: Vec::with_capacity()})
                 println!("EDNSerialize for Value,  ser list ref");
@@ -240,8 +250,13 @@ pub struct Serializer;
 impl EDNSerializer for Serializer  {
     type Error = Error;
     type SerializeL = SerializeVec;
+    type SerializeV = SerializeVec;
 
     fn serialize_list(self, len: Option<usize>) -> Result<SerializeVec,<Self as EDNSerializer>::Error> {
+        Ok(SerializeVec {vec:Vec::with_capacity(len.unwrap_or(0))})
+    }
+
+    fn serialize_vector(self, len: Option<usize>) -> Result<Self::SerializeV, <Self as EDNSerializer>::Error> {
         Ok(SerializeVec {vec:Vec::with_capacity(len.unwrap_or(0))})
     }
 }
@@ -477,6 +492,22 @@ pub struct SerializeVec {
 }
 
 impl SerializeList for SerializeVec {
+    type Ok = Value;
+    type Error = Error;
+
+    fn serialize_element<T: ?Sized>(&mut self, value: &T) -> Result<(), Error>
+        where
+            T: EDNSerialize,
+    {
+        self.vec.push(try!(to_value(&value)));
+        Ok(())
+    }
+
+    fn end(self) -> Result<Value, Error> {
+        Ok(Value::List(self.vec))
+    }
+}
+impl SerializeVector for SerializeVec {
     type Ok = Value;
     type Error = Error;
 

@@ -221,8 +221,15 @@ pub enum Value {
     /// # }
     /// ```
     Keyword(Keyword),
-//    Keyword2(String),
+    //    Keyword2(String),
     Symbol(Symbol),
+}
+
+impl PartialEq<&Value> for Value {
+    fn eq(&self, &other: &&Value) -> bool {
+        false
+//        PartialEq::eq(&self, *&other)
+    }
 }
 
 impl Debug for Value {
@@ -1110,8 +1117,8 @@ mod ser;
 // Taking by value is more friendly to iterator adapters, option and result
 // consumers, etc. See https://github.com/serde-rs/edn/pull/149.
 pub fn to_value<T>(value: T) -> Result<Value, Error>
-where
-    T: Serialize,
+    where
+        T: Serialize,
 {
     value.serialize(Serializer)
 }
@@ -1157,8 +1164,8 @@ where
 /// the edn map or some number is too big to fit in the expected primitive
 /// type.
 pub fn from_value<T>(value: Value) -> Result<T, Error>
-where
-    T: DeserializeOwned,
+    where
+        T: DeserializeOwned,
 {
     T::deserialize(value)
 }
