@@ -47,6 +47,7 @@ struct SimpleTypes {
     string: Value,
     keyword: Value,
     symbol: Value,
+    boolean: Value,
 }
 
 impl SimpleTypes {
@@ -57,6 +58,7 @@ impl SimpleTypes {
             self.string,
             self.int,
             self.float,
+            self.boolean
         )
     }
 }
@@ -69,6 +71,7 @@ impl Default for SimpleTypes {
             string: Value::String(String::from_str("foo").unwrap()),
             keyword: Value::Keyword(Keyword::from_str("foo").unwrap()),
             symbol: Value::Symbol(Symbol::from_str("println").unwrap()),
+            boolean: Value::Bool(true),
         }
     }
 }
@@ -103,7 +106,7 @@ fn parse_list() {
     let empty = Value::from_str(r#"()"#).unwrap();
     assert_eq!(empty, Value::List(vec!()));
 
-    let flat = Value::from_str(r#"(println :foo "foo" 42 42.3)"#).unwrap();
+    let flat = Value::from_str(r#"(println :foo "foo" 42 42.3 true)"#).unwrap();
     assert_eq!(flat, Value::List(SimpleTypes::default().values()));
 
     let lol5 = Value::from_str(r#"((((()))))"#).unwrap();
@@ -159,44 +162,29 @@ fn serialize_list() {
     let vs = st.clone().values();
     assert_eq!(
         to_string(&Value::List(vs)).unwrap(),
-        r#"(println :foo "foo" 42 42.3)"#
+        r#"(println :foo "foo" 42 42.3 true)"#
     );
+
     // convenient but impl makes it harder to tell what went wrong
     // leaving until it becomes a problem
 //    round_trip(r#"(println :foo "foo" 42 42.3)"#, Value::List(st.values()));
     let st2 = SimpleTypes::default();
     assert_eq!(
         to_string(&Value::List(vec![st2.symbol.clone(),
-                                   Value::Vector(vec![st2.keyword,
-                                                      Value::List(vec![st2.symbol])])])
+                                    Value::Vector(vec![st2.keyword,
+                                                       Value::List(vec![st2.symbol])])])
         ).unwrap(),
         r#"(println [:foo (println)])"#
     );
-
-
-//    let st2 = SimpleTypes::default();
-//    let inside_vector = Value::from_str(r#"(println [:foo (println)])"#).unwrap();
-//    round_trip(r#"(println [:foo (println)])"#,
-//        Value::List(vec![st2.symbol.clone(),
-//                         Value::Vector(vec![st2.keyword,
-//                                            Value::List(vec![st2.symbol])])])
-//    )
 }
 
 #[test]
 fn parse_arbitrary() {
-//    let x = Value::from_str(r#"(foo "bar")"#);
-//    let x = Value::from_str(r#"(false (bar"baz"))"#);
-//    let x = Value::from_str(r#"(println(println[[(true)]"hi"]))"#).unwrap();
-
     let x = Value::from_str(r#"(println(println[[:foo [(true 1 42.0)]]"hi"]))"#).unwrap();
-//    let x = Value::from_str(r#"(println(println[(true)"hi"]))"#).unwrap();
-
     let k = Value::from_str(":foo");
     println!("x {:?}", &x);
     println!("x {}", &x);
     println!("one more again");
     println!("{}", format!("{}", &x));
     println!("k {:?}", k.unwrap());
-    assert_eq!(false, true)
 }
