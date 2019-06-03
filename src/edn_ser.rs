@@ -13,8 +13,10 @@ pub trait EDNSerializer: Sized + serde::Serializer
 
     type SerializeL: SerializeList<Ok = Self::Ok, Error = <Self as serde::Serializer>::Error>;
     type SerializeV: SerializeVector<Ok = Self::Ok, Error = <Self as serde::Serializer>::Error>;
+    type SerializeS: SerializeSet<Ok = Self::Ok, Error = <Self as serde::Serializer>::Error>;
 
     fn serialize_list(self, len: Option<usize>) -> Result<Self::SerializeL, <Self as serde::Serializer>::Error>;
+    fn serialize_set(self, len: Option<usize>) -> Result<Self::SerializeS, <Self as serde::Serializer>::Error>;
     fn serialize_vector(self, len: Option<usize>) -> Result<Self::SerializeV, <Self as serde::Serializer>::Error>;
 }
 
@@ -30,6 +32,17 @@ pub trait SerializeVector {
 }
 
 pub trait SerializeList {
+    type Ok;
+    type Error;
+
+    fn serialize_element<T: ?Sized>(&mut self, value: &T) -> Result<(), Self::Error>
+        where
+            T: EDNSerialize;
+
+    fn end(self) -> Result<Self::Ok, Self::Error>;
+}
+
+pub trait SerializeSet {
     type Ok;
     type Error;
 

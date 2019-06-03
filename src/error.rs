@@ -76,6 +76,7 @@ impl Error {
             | ErrorCode::InvalidNumber
             | ErrorCode::InvalidKeyword
             | ErrorCode::InvalidSymbol
+            | ErrorCode::ReaderTagMustBeASymbol
             | ErrorCode::NumberOutOfRange
             | ErrorCode::InvalidUnicodeCodePoint
             | ErrorCode::ControlCharacterWhileParsingString
@@ -225,6 +226,8 @@ pub enum ErrorCode {
     InvalidKeyword,
     InvalidSymbol,
 
+    ReaderTagMustBeASymbol,
+
 
     /// Expected this character to be either a `'{'` or a `'['`.
     ExpectedObjectOrVector,
@@ -329,6 +332,7 @@ impl Display for ErrorCode {
             ErrorCode::ExpectedWhitespace => f.write_str("expected whitespace"),
             ErrorCode::InvalidKeyword => f.write_str("invalid keyword"),
             ErrorCode::InvalidSymbol => f.write_str("invalid symbol"),
+            ErrorCode::ReaderTagMustBeASymbol => f.write_str("Reader tag must be a symbol"),
             ErrorCode::ExpectedListCommaOrEnd => f.write_str("expected `,` or `]`"),
             ErrorCode::ExpectedObjectCommaOrEnd => f.write_str("expected `,` or `}`"),
             ErrorCode::ExpectedObjectOrVector => f.write_str("expected `{` or `[`"),

@@ -194,6 +194,7 @@ pub enum Value {
     /// ```
     Vector(Vec<Value>),
     List(Vec<Value>),
+    Set(Vec<Value>),
 
     /// Represents an edn map.
     ///
@@ -241,6 +242,7 @@ impl Debug for Value {
             Value::String(ref v) => formatter.debug_tuple("String").field(v).finish(),
             Value::Vector(ref v) => formatter.debug_tuple("Vector").field(v).finish(),
             Value::List(ref v) => formatter.debug_tuple("List").field(v).finish(),
+            Value::Set(ref v) => formatter.debug_tuple("Set").field(v).finish(),
             Value::Object(ref v) => formatter.debug_tuple("Object").field(v).finish(),
             Value::Keyword(ref v) => Debug::fmt(v, formatter),
             Value::Symbol(ref v) => Debug::fmt(v, formatter),

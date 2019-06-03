@@ -121,6 +121,28 @@ fn parse_list() {
     )
 }
 
+#[test]
+fn parse_set() {
+    let st = SimpleTypes::default();
+
+    let empty = Value::from_str(r#"#{}"#).unwrap();
+    assert_eq!(empty, Value::Set(vec!()));
+
+    let flat = Value::from_str(r#"#{println :foo "foo" 42 42.3 true}"#).unwrap();
+    assert_eq!(flat, Value::Set(SimpleTypes::default().values()));
+
+//    let lol5 = Value::from_str(r#"((((()))))"#).unwrap();
+//    assert_eq!(lol5, Value::List(vec!(Value::List(vec!(Value::List(vec!(Value::List(vec!(Value::List(vec!()))))))))));
+//
+    let inside_vector = Value::from_str(r#"#{println [:foo #{println}]}"#).unwrap();
+    assert_eq!(
+        inside_vector,
+        Value::Set(vec![st.symbol.clone(),
+                         Value::Vector(vec![st.keyword,
+                                            Value::Set(vec![st.symbol])])])
+    )
+}
+
 const STR: SimpleStrings<'static> = SimpleStrings {
     int: "42",
     float: "42.3",
@@ -175,6 +197,33 @@ fn serialize_list() {
                                                        Value::List(vec![st2.symbol])])])
         ).unwrap(),
         r#"(println [:foo (println)])"#
+    );
+}
+
+#[test]
+fn serialize_set() {
+    let st = SimpleTypes::default();
+    assert_eq!(
+        to_string(&Value::Set(vec![])).unwrap(),
+        "#{}"
+    );
+
+    let vs = st.clone().values();
+    assert_eq!(
+        to_string(&Value::Set(vs)).unwrap(),
+        r#"#{println :foo "foo" 42 42.3 true}"#
+    );
+
+    // convenient but impl makes it harder to tell what went wrong
+    // leaving until it becomes a problem
+//    round_trip(r#"(println :foo "foo" 42 42.3)"#, Value::List(st.values()));
+    let st2 = SimpleTypes::default();
+    assert_eq!(
+        to_string(&Value::Set(vec![st2.symbol.clone(),
+                                    Value::Vector(vec![st2.keyword,
+                                                       Value::Set(vec![st2.symbol])])])
+        ).unwrap(),
+        r#"#{println [:foo #{println}]}"#
     );
 }
 

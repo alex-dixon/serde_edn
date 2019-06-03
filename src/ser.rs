@@ -18,7 +18,7 @@ use serde::ser::{self, Impossible, Serialize};
 
 use itoa;
 use ryu;
-use edn_ser::{EDNSerialize, EDNSerializer, SerializeList, SerializeVector};
+use edn_ser::{EDNSerialize, EDNSerializer, SerializeList, SerializeVector, SerializeSet};
 
 /// A structure for serializing Rust values into edn.
 pub struct Serializer<W, F = CompactFormatter> {
@@ -79,6 +79,7 @@ impl<'a, W, F> EDNSerializer for &'a mut Serializer<W, F>
 
     type SerializeL = Compound<'a, W, F>;
     type SerializeV = Compound<'a, W, F>;
+    type SerializeS = Compound<'a, W, F>;
 
     #[inline]
     fn serialize_list(self, len: Option<usize>) -> Result<Self::SerializeL> {
@@ -127,6 +128,33 @@ impl<'a, W, F> EDNSerializer for &'a mut Serializer<W, F>
             try!(self
                 .formatter
                 .begin_vector(&mut self.writer)
+                .map_err(Error::io));
+            Ok(Compound::Map {
+                ser: self,
+                state: State::First,
+            })
+        }
+    }
+
+    fn serialize_set(self, len: Option<usize>) -> Result<Self::SerializeS> {
+        println!("ser set");
+        if len == Some(0) {
+            try!(self
+                .formatter
+                .begin_set(&mut self.writer)
+                .map_err(Error::io));
+            try!(self
+                .formatter
+                .end_set(&mut self.writer)
+                .map_err(Error::io));
+            Ok(Compound::Map {
+                ser: self,
+                state: State::Empty,
+            })
+        } else {
+            try!(self
+                .formatter
+                .begin_set(&mut self.writer)
                 .map_err(Error::io));
             Ok(Compound::Map {
                 ser: self,
@@ -722,6 +750,65 @@ impl<'a, W, F> SerializeVector for Compound<'a, W, F>
                 match state {
                     State::Empty => {}
                     _ => try!(ser.formatter.end_vector(&mut ser.writer).map_err(Error::io)),
+                }
+                Ok(())
+            }
+            #[cfg(feature = "arbitrary_precision")]
+            Compound::Number { .. } => unreachable!(),
+            #[cfg(feature = "raw_value")]
+            Compound::RawValue { .. } => unreachable!(),
+            _ => unreachable!()
+        }
+    }
+}
+
+impl<'a, W, F> SerializeSet for Compound<'a, W, F>
+    where
+        W: io::Write,
+        F: Formatter,
+{
+    type Ok = ();
+    type Error = Error;
+
+    #[inline]
+    fn serialize_element<T: ?Sized>(&mut self, value: &T) -> Result<()>
+        where
+            T: EDNSerialize,
+//            T: Serialize,
+    {
+        match *self {
+            Compound::Map {
+                ref mut ser,
+                ref mut state,
+            } => {
+                try!(ser
+                    .formatter
+                    .begin_vector_value(&mut ser.writer, *state == State::First)
+                    .map_err(Error::io));
+                *state = State::Rest;
+//                try!(value.serialize(&mut **ser));
+                try!(EDNSerialize::serialize(value,&mut **ser));
+                try!(ser
+                    .formatter
+                    .end_vector_value(&mut ser.writer)
+                    .map_err(Error::io));
+                Ok(())
+            }
+            #[cfg(feature = "arbitrary_precision")]
+            Compound::Number { .. } => unreachable!(),
+            #[cfg(feature = "raw_value")]
+            Compound::RawValue { .. } => unreachable!(),
+            _ => unreachable!()
+        }
+    }
+
+    #[inline]
+    fn end(self) -> Result<()> {
+        match self {
+            Compound::Map { ser, state } => {
+                match state {
+                    State::Empty => {}
+                    _ => try!(ser.formatter.end_set(&mut ser.writer).map_err(Error::io)),
                 }
                 Ok(())
             }
@@ -2436,6 +2523,27 @@ pub trait Formatter {
             W: io::Write,
     {
         writer.write_all(b")")
+    }
+
+
+    /// Called before every list.  Writes a `(` to the specified
+        /// writer.
+    #[inline]
+    fn begin_set<W: ?Sized>(&mut self, writer: &mut W) -> io::Result<()>
+        where
+            W: io::Write,
+    {
+        writer.write_all(b"#{")
+    }
+
+    /// Called after every list.  Writes a `)` to the specified
+    /// writer.
+    #[inline]
+    fn end_set<W: ?Sized>(&mut self, writer: &mut W) -> io::Result<()>
+        where
+            W: io::Write,
+    {
+        writer.write_all(b"}")
     }
 
     /// Called before every vector value.  Writes a `,` if needed to

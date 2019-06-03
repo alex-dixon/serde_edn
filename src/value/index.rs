@@ -156,12 +156,13 @@ struct Type<'a>(&'a Value);
 impl<'a> fmt::Display for Type<'a> {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         match *self.0 {
-            Value::Nil => formatter.write_str("null"),
+            Value::Nil => formatter.write_str("nil"),
             Value::Bool(_) => formatter.write_str("boolean"),
             Value::Number(_) => formatter.write_str("number"),
             Value::String(_) => formatter.write_str("string"),
             Value::Vector(_) => formatter.write_str("vector"),
             Value::List(_) => formatter.write_str("list"),
+            Value::Set(_) => formatter.write_str("set"),
             Value::Object(_) => formatter.write_str("object"),
             Value::Keyword(_) => formatter.write_str("keyword"),
             Value::Symbol(_) => formatter.write_str("symbol"),

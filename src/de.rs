@@ -765,6 +765,8 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         }
     }
 
+    //  could parameterize, get rid of named ones
+    // at least be aware this isn't really for "seq" but vector
     fn end_seq(&mut self) -> Result<()> {
         match try!(self.parse_whitespace()) {
             Some(b']') => {
@@ -775,6 +777,24 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                 self.eat_char();
                 match self.parse_whitespace() {
                     Ok(Some(b']')) => Err(self.peek_error(ErrorCode::TrailingComma)),
+                    _ => Err(self.peek_error(ErrorCode::TrailingCharacters)),
+                }
+            }
+            Some(_) => Err(self.peek_error(ErrorCode::TrailingCharacters)),
+            None => Err(self.peek_error(ErrorCode::EofWhileParsingList)),
+        }
+    }
+
+    fn end_set(&mut self) -> Result<()> {
+        match try!(self.parse_whitespace()) {
+            Some(b'}') => {
+                self.eat_char();
+                Ok(())
+            }
+            Some(b',') => {
+                self.eat_char();
+                match self.parse_whitespace() {
+                    Ok(Some(b'}')) => Err(self.peek_error(ErrorCode::TrailingComma)),
                     _ => Err(self.peek_error(ErrorCode::TrailingCharacters)),
                 }
             }
@@ -1033,7 +1053,7 @@ macro_rules! deserialize_prim_number {
 
 pub enum ParseDecision {
     Symbol,
-    Reserved
+    Reserved,
 }
 
 
@@ -1202,6 +1222,64 @@ impl<'de, 'a, R: Read<'de>> EDNDeserializer<'de> for &'a mut Deserializer<R> {
                     (Err(err), _) | (_, Err(err)) => Err(err),
                 }
             }
+            b'#' => {
+                // #inst and #uuid are built in
+                self.eat_char();
+                // immediate next must be alpha if tag, { if set
+                match try!(self.peek()) {
+                    Some(b'u') => {
+                        unimplemented!();
+                        self.eat_char();
+                        let reserved_len: usize = 4;
+                        let reserved: [u8; 5] = [b'u', b'u', b'i', b'd', 0];
+                        let mut offset: usize = 1;
+                        self.scratch.clear();
+                        match try!(self.read.parse_reserved_or_symbol(
+                            &mut self.scratch,
+                            &mut offset,
+                            reserved_len,
+                            &reserved,
+                        )) {
+                            ParseDecision::Reserved => {
+                                self.parse_ident(b"uid");
+                                // next char may be whitespace or a string rep of uuid
+                                //
+                                unimplemented!()
+                            }
+                            ParseDecision::Symbol => match try!(self.read.parse_symbol_offset(&mut self.scratch, offset)) {
+                                Reference::Borrowed(s) => {
+                                    visitor.visit_map(SymbolDeserializer {
+                                        value: s
+                                    })
+                                }
+                                Reference::Copied(_) => unreachable!()
+                            }
+                        }
+                    }
+                    Some(b'i') => unimplemented!("maybe inst"),
+//                    Some(b'a'..b'z') => unimplemented!("start tag followed by data"),
+                    Some(b'{') => {
+                        self.remaining_depth -= 1;
+                        if self.remaining_depth == 0 {
+                            return Err(self.peek_error(ErrorCode::RecursionLimitExceeded));
+                        }
+
+                        println!("edn-de/set");
+                        self.eat_char();
+                        let ret = visitor.visit_set(SetAccess::new(self));
+
+                        self.remaining_depth += 1;
+
+                        match (ret, self.end_set()) {
+                            (Ok(ret), Ok(())) => Ok(ret),
+                            (Err(err), _) | (_, Err(err)) => Err(err),
+                        }
+                    },
+                    Some(b':') => unimplemented!("start namespaced map"),
+                    _ => unimplemented!()
+//                    _=> return Err(self.peek_error(ErrorCode))
+                }
+            }
             b'{' => {
                 self.remaining_depth -= 1;
                 if self.remaining_depth == 0 {
@@ -1260,7 +1338,7 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
             V: //EDNVisitor<'de>+
             de::Visitor<'de>,
     {
-//        unreachable!("serde::Deserializer::deserialize_any");
+        unreachable!("serde::Deserializer::deserialize_any");
         let peek = match try!(self.parse_whitespace()) {
             Some(b) => b,
             None => {
@@ -2024,7 +2102,7 @@ impl<'a, R: 'a> SeqAccess<'a, R> {
 }
 
 //impl<'de, 'a, R: Read<'de> + 'a> de::SeqAccess<'de> for SeqAccess<'a, R> {
-    impl<'de, 'a, R: Read<'de> + 'a> EDNSeqAccess<'de> for SeqAccess<'a, R> {
+impl<'de, 'a, R: Read<'de> + 'a> EDNSeqAccess<'de> for SeqAccess<'a, R> {
     type Error = Error;
 
     fn next_element_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>>
@@ -2080,7 +2158,43 @@ impl<'de, 'a, R: Read<'de> + 'a> EDNSeqAccess<'de> for ListAccess<'a, R> {
         };
 
         match peek {
-            Some(_) => Ok(Some(try!(EDNDeserializeSeed::deserialize(seed,&mut *self.de)))),
+            Some(_) => Ok(Some(try!(EDNDeserializeSeed::deserialize(seed, &mut *self.de)))),
+            None => Err(self.de.peek_error(ErrorCode::EofWhileParsingValue)),
+        }
+    }
+}
+
+struct SetAccess<'a, R: 'a> {
+    de: &'a mut Deserializer<R>,
+}
+
+impl<'a, R: 'a> SetAccess<'a, R> {
+    fn new(de: &'a mut Deserializer<R>) -> Self {
+        SetAccess {
+            de: de,
+        }
+    }
+}
+
+impl<'de, 'a, R: Read<'de> + 'a> EDNSeqAccess<'de> for SetAccess<'a, R> {
+    type Error = Error;
+
+    fn next_element_seed<T>(&mut self, seed: T) -> Result<Option<<T as EDNDeserializeSeed<'de>>::Value>>
+        where
+            T: EDNDeserializeSeed<'de> //de::DeserializeSeed<'de>,
+    {
+        let peek = match try!(self.de.parse_whitespace()) {
+            Some(b'}') => {
+                return Ok(None);
+            }
+            Some(b) => Some(b),
+            None => {
+                return Err(self.de.peek_error(ErrorCode::EofWhileParsingList));
+            }
+        };
+
+        match peek {
+            Some(_) => Ok(Some(try!(EDNDeserializeSeed::deserialize(seed, &mut *self.de)))),
             None => Err(self.de.peek_error(ErrorCode::EofWhileParsingValue)),
         }
     }

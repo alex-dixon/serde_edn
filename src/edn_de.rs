@@ -22,6 +22,16 @@ pub trait EDNVisitor<'de>: Sized + Visitor<'de> {
         unimplemented!()
 //        Err(Error::invalid_type(Unexpected::Seq, &self))
     }
+
+    fn visit_set<A>(self, seq: A) -> Result<<Self as Visitor<'de>>::Value, A::Error>
+        where
+            A: EDNSeqAccess<'de>,
+    {
+        let _ = seq;
+        unimplemented!()
+//        Err(Error::invalid_type(Unexpected::Seq, &self))
+    }
+
     fn  visit_keyword<E>(self,s:&str) -> Result<<Self as Visitor<'de>>::Value, E>
     where E:serde::de::Error{
         unimplemented!()

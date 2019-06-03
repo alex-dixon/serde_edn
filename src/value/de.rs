@@ -185,6 +185,19 @@ impl<'de> EDNDeserialize<'de> for Value {
 
                 Ok(Value::List(vec))
             }
+            #[inline]
+            fn visit_set<V>(self, mut visitor: V) -> Result<<Self as Visitor<'de>>::Value, V::Error>
+                where
+                    V: EDNSeqAccess<'de>,
+            {
+                let mut vec = Vec::new();
+
+                while let Some(elem) = try!(visitor.next_element()) {
+                    vec.push(elem);
+                }
+
+                Ok(Value::Set(vec))
+            }
 
             #[inline]
             fn visit_vector<V>(self, mut visitor: V) -> Result<<Self as Visitor<'de>>::Value, V::Error>
@@ -360,6 +373,7 @@ fn visit_vector<'de, V>(vector: Vec<Value>, visitor: V) -> Result<V::Value, Erro
     where
         V: Visitor<'de>,
 {
+    unreachable!("visit vector fn");
     let len = vector.len();
     let mut deserializer = SeqDeserializer::new(vector);
     let seq = try!(visitor.visit_seq(&mut deserializer));
@@ -378,11 +392,31 @@ fn visit_list<'de, V>(vector: Vec<Value>, visitor: V) -> Result<V::Value, Error>
     where
         V: Visitor<'de>,
 {
+    unreachable!("visit list fn");
     let len = vector.len();
     let mut deserializer = SeqDeserializer::new(vector);
 //    let mut deserializer = ListDeserializer::new(vector);
     let seq = try!(visitor.visit_seq(&mut deserializer));
     println!("visit_list");
+    let remaining = deserializer.iter.len();
+    if remaining == 0 {
+        Ok(seq)
+    } else {
+        Err(serde::de::Error::invalid_length(
+            len,
+            &"fewer elements in list",
+        ))
+    }
+}
+fn visit_set<'de, V>(vector: Vec<Value>, visitor: V) -> Result<V::Value, Error>
+    where
+        V: Visitor<'de>,
+{
+    unreachable!("visit set fn");
+    let len = vector.len();
+    let mut deserializer = SeqDeserializer::new(vector);
+//    let mut deserializer = ListDeserializer::new(vector);
+    let seq = try!(visitor.visit_seq(&mut deserializer));
     let remaining = deserializer.iter.len();
     if remaining == 0 {
         Ok(seq)
@@ -429,6 +463,7 @@ impl<'de> serde::Deserializer<'de> for Value {
             Value::String(v) => visitor.visit_string(v),
             Value::Vector(v) => visit_vector(v, visitor),
             Value::List(v) => visit_list(v, visitor),
+            Value::Set(v) => visit_set(v, visitor),
             Value::Object(v) => visit_object(v, visitor),
             Value::Keyword(kw) => {
                 println!("visit keyword to str...{:?}", kw.to_string());
@@ -934,6 +969,7 @@ fn visit_vector_ref<'de, V>(vector: &'de [Value], visitor: V) -> Result<V::Value
     where
         V: Visitor<'de>,
 {
+    unreachable!("visit vector ref");
     let len = vector.len();
     let mut deserializer = SeqRefDeserializer::new(vector);
     let seq = try!(visitor.visit_seq(&mut deserializer));
@@ -952,6 +988,25 @@ fn visit_list_ref<'de, V>(vector: &'de [Value], visitor: V) -> Result<V::Value, 
     where
         V: Visitor<'de>,
 {
+    unreachable!("visit list ref");
+    let len = vector.len();
+    let mut deserializer = SeqRefDeserializer::new(vector);
+    let seq = try!(visitor.visit_seq(&mut deserializer));
+    let remaining = deserializer.iter.len();
+    if remaining == 0 {
+        Ok(seq)
+    } else {
+        Err(serde::de::Error::invalid_length(
+            len,
+            &"fewer elements in vector",
+        ))
+    }
+}
+fn visit_set_ref<'de, V>(vector: &'de [Value], visitor: V) -> Result<V::Value, Error>
+    where
+        V: Visitor<'de>,
+{
+    unreachable!("visit set ref");
     let len = vector.len();
     let mut deserializer = SeqRefDeserializer::new(vector);
     let seq = try!(visitor.visit_seq(&mut deserializer));
@@ -998,6 +1053,7 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
             Value::String(ref v) => visitor.visit_borrowed_str(v),
             Value::Vector(ref v) => visit_vector_ref(v, visitor),
             Value::List(ref v) => visit_list_ref(v, visitor),
+            Value::Set(ref v) => visit_set_ref(v, visitor),
             Value::Object(ref v) => visit_object_ref(v, visitor),
             Value::Keyword(ref kw) => {
                 //todo. keyword ref  deserializer?
@@ -1652,6 +1708,7 @@ impl Value {
             Value::String(ref s) => Unexpected::Str(s),
             Value::Vector(_) => Unexpected::Seq,
             Value::List(_) => Unexpected::Seq,
+            Value::Set(_) => Unexpected::Seq,
             Value::Object(_) => Unexpected::Map,
             Value::Keyword(ref s) => Unexpected::Other("keyword"),
             Value::Symbol(ref s) => Unexpected::Other("symbol")
