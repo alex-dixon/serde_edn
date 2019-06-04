@@ -1057,9 +1057,6 @@ pub enum ParseDecision {
 }
 
 
-// maybe can't impl de::Deserializer directly
-// because its deserialize_any requires de::Visitor
-
 impl<'de, 'a, R: Read<'de>> EDNDeserializer<'de> for &'a mut Deserializer<R> {
     type Error = Error;
 
@@ -1074,20 +1071,6 @@ impl<'de, 'a, R: Read<'de>> EDNDeserializer<'de> for &'a mut Deserializer<R> {
         };
 
         let value = match peek {
-            // todo. need to look for idents + whitespace once parsing symbols
-            // doesn't appear serde-json has pattern for disambiguation
-            // because we can match on something correct according to json or it's incorrect
-            // (seems inherent to design of json)
-            // few approaches
-            // nil_or_symbol -> scratch with fixed length max 3,
-            // wouldn't need scratch necessarily if not io::read (see parse_str_bytes
-            // in impls of Reader
-            //
-            // optimally symbol support could be optional (feature flag)
-            //
-            // while in here:
-            // symbol unless we see i + n + whitespace
-            // buffer can be fixed size, originated here
             b'n' => {
                 self.eat_char();
                 let reserved_len: usize = 3;
@@ -1175,7 +1158,8 @@ impl<'de, 'a, R: Read<'de>> EDNDeserializer<'de> for &'a mut Deserializer<R> {
                     Reference::Copied(s) => {
                         // Keywords are always Reference::Borrowed because no escape sequence
                         // to deal with as was the case with strings
-                        unreachable!()
+//                        unreachable!()
+                        visitor.visit_keyword(s)
                     }
                 }
             }
@@ -1194,7 +1178,6 @@ impl<'de, 'a, R: Read<'de>> EDNDeserializer<'de> for &'a mut Deserializer<R> {
                     return Err(self.peek_error(ErrorCode::RecursionLimitExceeded));
                 }
 
-                println!("edn-de/vector");
                 self.eat_char();
                 let ret = visitor.visit_vector(SeqAccess::new(self));
 
@@ -1213,7 +1196,6 @@ impl<'de, 'a, R: Read<'de>> EDNDeserializer<'de> for &'a mut Deserializer<R> {
 
                 self.eat_char();
                 let ret = visitor.visit_list(ListAccess::new(self));
-//
 
                 self.remaining_depth += 1;
 
@@ -1304,7 +1286,9 @@ impl<'de, 'a, R: Read<'de>> EDNDeserializer<'de> for &'a mut Deserializer<R> {
                             value: s
                         })
                     }
-                    Reference::Copied(_) => unreachable!()
+                    Reference::Copied(s) => {
+                        visitor.visit_symbol(s)
+                    }
                 }
             }
             _ => Err(self.peek_error(ErrorCode::ExpectedSomeValue)),

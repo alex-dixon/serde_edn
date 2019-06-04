@@ -32,6 +32,9 @@ pub trait EDNVisitor<'de>: Sized + Visitor<'de> {
 //        Err(Error::invalid_type(Unexpected::Seq, &self))
     }
 
+    // note: not borrowed so lifetime implicitly 'a (not 'de)
+    fn visit_symbol<E>(self,s:&str) -> Result<<Self as Visitor<'de>>::Value,E>;
+
     fn  visit_keyword<E>(self,s:&str) -> Result<<Self as Visitor<'de>>::Value, E>
     where E:serde::de::Error{
         unimplemented!()

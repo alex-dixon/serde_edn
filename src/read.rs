@@ -255,20 +255,26 @@ where
             F: FnOnce(&'s Self, &'s [u8]) -> Result<T>,
     {
         loop {
-            let ch = try!(next_or_eof(self));
-            if VALID_SYMBOL_BYTE[ch as usize]  {
-                scratch.push(ch);
-                continue;
-            }
-            match ch {
-                b' ' | b'\n' | b'\r' | b'\t' | b',' => {
-                    return result(self,scratch)
-                }
+            match try!(self.peek()) {
+                Some(ch) => {
+                    if VALID_SYMBOL_BYTE[ch as usize] {
+                        self.discard();
+                        scratch.push(ch);
+                        continue;
+                    }
+                    match ch {
+                        b')' | b']' | b'}' | b'(' | b'[' | b'{' |
+                        b' ' | b'\n' | b'\r' | b'\t' | b',' => {
+                            return result(self, scratch);
+                        }
 
-                _ => {
-                    // todo. ErrorCode::InvalidSymbol (though this will be called by keyword parse fns)
-                    return error(self,ErrorCode::InvalidKeyword)
+                        _ => {
+                            // todo. ErrorCode::InvalidSymbol (though this will be called by keyword parse fns)
+                            return error(self, ErrorCode::InvalidKeyword);
+                        }
+                    }
                 }
+                None => return result(self, scratch)
             }
         }
     }
@@ -444,7 +450,58 @@ where
         reserved_len: usize,
         reserved_bytes: &[u8; 5], //can't generify size so hard coded to max of reserved words i.e. `false` and callers will have to pad to 5
     ) -> Result<ParseDecision> {
-        unimplemented!()
+        loop {
+            match try!(self.next()) {
+                Some(b' ') | Some(b'\n') | Some(b'\t') | Some(b'\r') | Some(b',') => {
+                    scratch.extend_from_slice(&reserved_bytes[0..*offset]);
+                    break Ok(ParseDecision::Symbol);
+                }
+                Some(v) => {
+                    if v == reserved_bytes[*offset] {
+                        *offset += 1;
+
+                        if *offset == reserved_len {
+                            match try!(self.peek()) {
+                                Some(b' ') | Some(b'\n') | Some(b'\t') | Some(b'\r') | Some(b',')
+                                | Some(b'"')
+                                | Some(b'(') | Some(b'{') | Some(b'{')
+                                | Some(b')') | Some(b']') | Some(b'}') => {
+                                    break Ok(ParseDecision::Reserved);
+                                }
+                                Some(v2) => {
+                                    scratch.extend_from_slice(&reserved_bytes[0..*offset]);
+                                    break Ok(ParseDecision::Symbol);
+                                }
+                                // eof
+                                None => {
+                                    break Ok(ParseDecision::Reserved);
+                                }
+                            }
+                        }
+                        // loop again because within reserved sequence but not at the end
+                        continue;
+                    }
+
+                    // not a reserved word but matches the reserved word sequence
+                    // up until offset
+                    *offset += 1;
+                    scratch.extend_from_slice(&reserved_bytes[0..*offset]);
+                    scratch.extend_from_slice(&[v]);
+                    break Ok(ParseDecision::Symbol);
+                }
+
+                // eof
+                None => {
+                    if *offset == reserved_len {
+                        break Ok(ParseDecision::Reserved);
+                    }
+                    // not a reserved thing but matches the reserved word sequence
+                    // up until offset
+                    scratch.extend_from_slice(&reserved_bytes[0..*offset]);
+                    break Ok(ParseDecision::Symbol);
+                }
+            }
+        }
     }
 }
 
@@ -505,19 +562,19 @@ impl<'a> SliceRead<'a> {
                         *offset += 1;
 
                         if *offset == reserved_len {
-                            match try!(self.peek()){
+                            match try!(self.peek()) {
                                 Some(b' ') | Some(b'\n') | Some(b'\t') | Some(b'\r') | Some(b',')
                                 | Some(b'"')
                                 | Some(b'(') | Some(b'{') | Some(b'{')
                                 | Some(b')') | Some(b']') | Some(b'}') => {
                                     break Ok(ParseDecision::Reserved)
                                 }
-                                Some(v2)=> {
+                                Some(v2) => {
                                     scratch.extend_from_slice(&reserved_bytes[0..*offset]);
                                     break Ok(ParseDecision::Symbol)
                                 }
                                 // eof
-                                None=>{
+                                None => {
                                     break Ok(ParseDecision::Reserved)
                                 }
                             }
@@ -978,7 +1035,6 @@ impl<'a> Read<'a> for StrRead<'a> {
         self.delegate.parse_symbol_bytes(scratch, true, |_, bytes| {
             // The input is assumed to be valid UTF-8 and the \u-escapes are
             // checked along the way, so don't need to check here.
-            // todo.
             Ok(unsafe { str::from_utf8_unchecked(bytes) })
         })
     }

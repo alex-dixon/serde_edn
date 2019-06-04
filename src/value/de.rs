@@ -28,7 +28,7 @@ use serde::de;
 #[cfg(feature = "arbitrary_precision")]
 use number::NumberFromString;
 use keyword::KeywordFromString;
-use symbol::SymbolFromString;
+use symbol::{SymbolFromString, Symbol};
 use edn_de::{EDNDeserialize, EDNDeserializer, EDNVisitor, EDNSeqAccess};
 
 
@@ -219,6 +219,11 @@ impl<'de> EDNDeserialize<'de> for Value {
             {
 
                 Ok(Value::Keyword(Keyword{ value: Some(String::from(s))}))
+            }
+
+            #[inline]
+            fn visit_symbol<E>(self, s: &str) -> Result<Self::Value, E> {
+                Ok(Value::Symbol(Symbol{ value: Some(String::from(s))}))
             }
         }
 

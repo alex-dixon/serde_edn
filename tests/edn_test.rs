@@ -39,6 +39,8 @@ use serde_edn::{
 use serde_edn::value::Symbol;
 use serde_edn::edn_ser::EDNSerialize;
 use compiletest_rs::common::Mode::CompileFail;
+use std::fs::File;
+use std::io::{Write, BufReader};
 
 #[derive(Clone)]
 struct SimpleTypes {
@@ -91,6 +93,51 @@ impl Default for ComplexTypes {
     }
 }
 
+const STR: SimpleStrings<'static> = SimpleStrings {
+    int: "42",
+    float: "42.3",
+    string: "\"foo\"",
+    keyword: ":foo",
+    symbol: "foo",
+};
+
+//#[derive(Clone)]
+struct SimpleStrings<'a> {
+    int: &'a str,
+    float: &'a str,
+    string: &'a str,
+    keyword: &'a str,
+    symbol: &'a str,
+}
+
+impl SimpleStrings<'static> {
+    fn values(self) -> Vec<&'static str> {
+        vec!(
+            self.symbol,
+            self.keyword,
+            self.string,
+            self.int,
+            self.float,
+        )
+    }
+}
+
+fn symbol(s: &str) -> Value {
+    Value::Symbol(Symbol { value: Some(String::from_str(s).unwrap()) })
+}
+
+fn keyword(s: &str) -> Value {
+    Value::Keyword(Keyword { value: Some(String::from_str(s).unwrap()) })
+}
+
+fn number(s: &str) -> Value {
+    Value::Number(Number::from_str(s).unwrap())
+}
+
+fn string(s: &str) -> Value {
+    Value::String(String::from_str(s).unwrap())
+}
+
 fn round_trip(s: &str, v: Value) {
     let a = Value::from_str(s).unwrap();
     assert_eq!(a, v);
@@ -138,38 +185,9 @@ fn parse_set() {
     assert_eq!(
         inside_vector,
         Value::Set(vec![st.symbol.clone(),
-                         Value::Vector(vec![st.keyword,
-                                            Value::Set(vec![st.symbol])])])
+                        Value::Vector(vec![st.keyword,
+                                           Value::Set(vec![st.symbol])])])
     )
-}
-
-const STR: SimpleStrings<'static> = SimpleStrings {
-    int: "42",
-    float: "42.3",
-    string: "\"foo\"",
-    keyword: ":foo",
-    symbol: "foo",
-};
-
-//#[derive(Clone)]
-struct SimpleStrings<'a> {
-    int: &'a str,
-    float: &'a str,
-    string: &'a str,
-    keyword: &'a str,
-    symbol: &'a str,
-}
-
-impl SimpleStrings<'static> {
-    fn values(self) -> Vec<&'static str> {
-        vec!(
-            self.symbol,
-            self.keyword,
-            self.string,
-            self.int,
-            self.float,
-        )
-    }
 }
 
 
@@ -214,17 +232,51 @@ fn serialize_set() {
         r#"#{println :foo "foo" 42 42.3 true}"#
     );
 
-    // convenient but impl makes it harder to tell what went wrong
-    // leaving until it becomes a problem
-//    round_trip(r#"(println :foo "foo" 42 42.3)"#, Value::List(st.values()));
     let st2 = SimpleTypes::default();
     assert_eq!(
         to_string(&Value::Set(vec![st2.symbol.clone(),
-                                    Value::Vector(vec![st2.keyword,
-                                                       Value::Set(vec![st2.symbol])])])
+                                   Value::Vector(vec![st2.keyword,
+                                                      Value::Set(vec![st2.symbol])])])
         ).unwrap(),
         r#"#{println [:foo #{println}]}"#
     );
+}
+
+
+#[test]
+fn deserialize_reserved_vs_symbol() {
+    assert_eq!(symbol("t"), Value::from_str("t").unwrap());
+    assert_eq!(symbol("tr"), Value::from_str("tr").unwrap());
+    assert_eq!(symbol("tru"), Value::from_str("tru").unwrap());
+    assert_eq!(Value::Bool(true), Value::from_str("true").unwrap());
+    assert_eq!(symbol("trub"), Value::from_str("trub").unwrap());
+    assert_eq!(symbol("trued"), Value::from_str("trued").unwrap());
+}
+
+#[test]
+fn deserialize_file() {
+    let x = Value::from_str(r#"(println(println[[:foo [(true 1 42.0)]]"hi"]))"#).unwrap();
+    let y = Value::List(vec![symbol("println"),
+                             Value::List(vec![symbol("println"),
+                                              Value::Vector(vec![Value::Vector(vec![keyword("foo"),
+                                                                                    Value::Vector(vec![Value::List(vec![
+                                                                                        Value::Bool(true),
+                                                                                        number("1"),
+                                                                                        number("42.0")
+                                                                                    ])])
+                                              ]),
+                                                                 string("hi")]),
+                             ])
+    ]);
+    assert_eq!(x, y);
+    assert_eq!(Value::Bool(true), Value::from_str("true").unwrap());
+    let mut w = File::create("foo.edn").unwrap();
+    let s = r#"(println(println[[:foo [(true 1 42.0)]]"hi"]))"#;
+    w.write_all(s.as_bytes());
+    let r = BufReader::new(File::open("foo.edn").unwrap());
+    let v: Value = from_reader(r).unwrap();
+    assert_eq!(v, y);
+    std::fs::remove_file("foo.edn").unwrap();
 }
 
 #[test]
