@@ -62,6 +62,7 @@ impl Error {
             | ErrorCode::EofWhileParsingObject
             | ErrorCode::EofWhileParsingString
             | ErrorCode::EofWhileParsingValue
+            | ErrorCode::EOFWhileReadingCharacter
             | ErrorCode::ExpectedWhitespace
             => Category::Eof,
 
@@ -77,6 +78,7 @@ impl Error {
             | ErrorCode::InvalidKeyword
             | ErrorCode::InvalidSymbol
             | ErrorCode::ReaderTagMustBeASymbol
+            | ErrorCode::UnsupportedCharacter
             | ErrorCode::NumberOutOfRange
             | ErrorCode::InvalidUnicodeCodePoint
             | ErrorCode::ControlCharacterWhileParsingString
@@ -227,6 +229,8 @@ pub enum ErrorCode {
     InvalidSymbol,
 
     ReaderTagMustBeASymbol,
+    UnsupportedCharacter,
+    EOFWhileReadingCharacter,
 
 
     /// Expected this character to be either a `'{'` or a `'['`.
@@ -328,11 +332,13 @@ impl Display for ErrorCode {
             ErrorCode::EofWhileParsingObject => f.write_str("EOF while parsing an object"),
             ErrorCode::EofWhileParsingString => f.write_str("EOF while parsing a string"),
             ErrorCode::EofWhileParsingValue => f.write_str("EOF while parsing a value"),
+            ErrorCode::EOFWhileReadingCharacter => f.write_str("EOF while reading character"),
             ErrorCode::ExpectedColon => f.write_str("expected `:`"),
             ErrorCode::ExpectedWhitespace => f.write_str("expected whitespace"),
             ErrorCode::InvalidKeyword => f.write_str("invalid keyword"),
             ErrorCode::InvalidSymbol => f.write_str("invalid symbol"),
             ErrorCode::ReaderTagMustBeASymbol => f.write_str("Reader tag must be a symbol"),
+            ErrorCode::UnsupportedCharacter => f.write_str("Unsupported character"),
             ErrorCode::ExpectedListCommaOrEnd => f.write_str("expected `,` or `]`"),
             ErrorCode::ExpectedObjectCommaOrEnd => f.write_str("expected `,` or `}`"),
             ErrorCode::ExpectedObjectOrVector => f.write_str("expected `{` or `[`"),

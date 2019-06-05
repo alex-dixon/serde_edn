@@ -158,6 +158,7 @@ impl<'a> fmt::Display for Type<'a> {
         match *self.0 {
             Value::Nil => formatter.write_str("nil"),
             Value::Bool(_) => formatter.write_str("boolean"),
+            Value::Char(_) => formatter.write_str("char"),
             Value::Number(_) => formatter.write_str("number"),
             Value::String(_) => formatter.write_str("string"),
             Value::Vector(_) => formatter.write_str("vector"),

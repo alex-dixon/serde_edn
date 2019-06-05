@@ -24,6 +24,7 @@ impl EDNSerialize for Value {
         match *self {
             Value::Nil => serializer.serialize_unit(),
             Value::Bool(b) => serializer.serialize_bool(b),
+            Value::Char(c) => serializer.serialize_char(c),
             Value::Number(ref n) => n.serialize(serializer),
             Value::String(ref s) => serializer.serialize_str(s),
             Value::Vector(ref v) => {
@@ -223,6 +224,7 @@ impl Serialize for Value {
         match *self {
             Value::Nil => serializer.serialize_unit(),
             Value::Bool(b) => serializer.serialize_bool(b),
+            Value::Char(b) => serializer.serialize_char(b),
             Value::Number(ref n) => n.serialize(serializer),
             Value::String(ref s) => serializer.serialize_str(s),
             Value::Vector(ref v) => v.serialize(serializer),

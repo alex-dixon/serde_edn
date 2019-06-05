@@ -32,6 +32,7 @@ use Value;
 use symbol::SymbolDeserializer;
 use edn_de::{EDNDeserialize, EDNDeserializer, EDNVisitor, EDNDeserializeOwned, EDNDeserializeSeed, EDNSeqAccess};
 use serde::Deserialize;
+use uuid::Uuid;
 
 //impl <'de,T> EDNDeserialize<'de> for T
 //where T: serde::de::Deserialize {
@@ -1209,6 +1210,22 @@ impl<'de, 'a, R: Read<'de>> EDNDeserializer<'de> for &'a mut Deserializer<R> {
                 self.eat_char();
                 // immediate next must be alpha if tag, { if set
                 match try!(self.peek()) {
+                    Some(b'{') => {
+                        self.remaining_depth -= 1;
+                        if self.remaining_depth == 0 {
+                            return Err(self.peek_error(ErrorCode::RecursionLimitExceeded));
+                        }
+
+                        self.eat_char();
+                        let ret = visitor.visit_set(SetAccess::new(self));
+
+                        self.remaining_depth += 1;
+
+                        match (ret, self.end_set()) {
+                            (Ok(ret), Ok(())) => Ok(ret),
+                            (Err(err), _) | (_, Err(err)) => Err(err),
+                        }
+                    }
                     Some(b'u') => {
                         unimplemented!();
                         self.eat_char();
@@ -1225,6 +1242,8 @@ impl<'de, 'a, R: Read<'de>> EDNDeserializer<'de> for &'a mut Deserializer<R> {
                             ParseDecision::Reserved => {
                                 self.parse_ident(b"uid");
                                 // next char may be whitespace or a string rep of uuid
+                                self.parse_whitespace();
+
                                 //
                                 unimplemented!()
                             }
@@ -1240,26 +1259,51 @@ impl<'de, 'a, R: Read<'de>> EDNDeserializer<'de> for &'a mut Deserializer<R> {
                     }
                     Some(b'i') => unimplemented!("maybe inst"),
 //                    Some(b'a'..b'z') => unimplemented!("start tag followed by data"),
-                    Some(b'{') => {
-                        self.remaining_depth -= 1;
-                        if self.remaining_depth == 0 {
-                            return Err(self.peek_error(ErrorCode::RecursionLimitExceeded));
-                        }
 
-                        println!("edn-de/set");
-                        self.eat_char();
-                        let ret = visitor.visit_set(SetAccess::new(self));
-
-                        self.remaining_depth += 1;
-
-                        match (ret, self.end_set()) {
-                            (Ok(ret), Ok(())) => Ok(ret),
-                            (Err(err), _) | (_, Err(err)) => Err(err),
-                        }
-                    },
                     Some(b':') => unimplemented!("start namespaced map"),
+                    Some(b'_') => unimplemented!("start discard"),
                     _ => unimplemented!()
 //                    _=> return Err(self.peek_error(ErrorCode))
+                }
+            }
+            b'\\' => {
+                // \c, \newline, \return, \space, \tab
+                self.eat_char();
+                match try!(self.peek()) {
+                    Some(b'n') => {
+                        self.eat_char();
+                        match try!(self.peek()) {
+                            Some(b' ') | Some(b'\n') | Some(b'\t') | Some(b'\r') | Some(b',') =>
+                                visitor.visit_char('n'),
+                            Some(_) =>
+                                match self.parse_ident(b"ewline") {
+                                    Err(_) => return Err(self.peek_error(ErrorCode::UnsupportedCharacter)),
+                                    Ok(_) => visitor.visit_char('\n')
+                                }
+                            // eof
+                            None =>  visitor.visit_char('n')
+                        }
+                    }
+                    Some(b'r') => {
+                        self.eat_char();
+                        match self.parse_ident(b"eturn") {
+                            Err(_) => return Err(self.peek_error(ErrorCode::UnsupportedCharacter)),
+                            Ok(_) => visitor.visit_char('\r')
+                        }
+                    }
+                    Some(b's') => unimplemented!(),
+                    Some(b't') => unimplemented!(),
+                    Some(c) => {
+                        self.eat_char();
+                        match c {
+                            // exclusive range pattern syntax is experimental (see issue #37854)
+                            // though it's used elsewhere...?
+                            b'a'..=b'm' | b'o'..=b'r' | b'u'..=b'z' => visitor.visit_char(c as char),
+                            _ =>unimplemented!()
+                        }
+
+                    }
+                    None => return Err(self.peek_error(ErrorCode::EOFWhileReadingCharacter))
                 }
             }
             b'{' => {
@@ -1280,6 +1324,7 @@ impl<'de, 'a, R: Read<'de>> EDNDeserializer<'de> for &'a mut Deserializer<R> {
             }
             c => {
                 self.scratch.clear();
+                println!("{}",String::from_utf8(vec![c]).unwrap());
                 match try!(self.read.parse_symbol(&mut self.scratch)) {
                     Reference::Borrowed(s) => {
                         visitor.visit_map(SymbolDeserializer {
@@ -1306,7 +1351,7 @@ impl<'de, 'a, R: Read<'de>> EDNDeserializer<'de> for &'a mut Deserializer<R> {
     }
 
     fn deserialize_list<V>(self, visitor: V)
-        -> Result<V::Value> where
+                           -> Result<V::Value> where
         V: EDNVisitor<'de> {
         unimplemented!()
     }

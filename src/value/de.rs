@@ -82,6 +82,12 @@ impl<'de> Deserialize<'de> for Value {
             }
 
             #[inline]
+            fn visit_char<E>(self, value: char) -> Result<Value, E>
+                where E: serde::de::Error {
+                Ok(Value::Char(value))
+            }
+
+            #[inline]
             fn visit_none<E>(self) -> Result<Value, E> {
                 Ok(Value::Nil)
             }
@@ -265,6 +271,12 @@ impl<'de> EDNDeserialize<'de> for Value {
             #[inline]
             fn visit_string<E>(self, value: String) -> Result<Value, E> {
                 Ok(Value::String(value))
+            }
+
+            #[inline]
+            fn visit_char<E>(self, value: char) -> Result<Value, E>
+                where E: serde::de::Error {
+                Ok(Value::Char(value))
             }
 
             #[inline]
@@ -464,6 +476,7 @@ impl<'de> serde::Deserializer<'de> for Value {
         match self {
             Value::Nil => visitor.visit_unit(),
             Value::Bool(v) => visitor.visit_bool(v),
+            Value::Char(v) => visitor.visit_char(v),
             Value::Number(n) => n.deserialize_any(visitor),
             Value::String(v) => visitor.visit_string(v),
             Value::Vector(v) => visit_vector(v, visitor),
@@ -1054,6 +1067,7 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
         match *self {
             Value::Nil => visitor.visit_unit(),
             Value::Bool(v) => visitor.visit_bool(v),
+            Value::Char(v) => visitor.visit_char(v),
             Value::Number(ref n) => n.deserialize_any(visitor),
             Value::String(ref v) => visitor.visit_borrowed_str(v),
             Value::Vector(ref v) => visit_vector_ref(v, visitor),
@@ -1709,6 +1723,7 @@ impl Value {
         match *self {
             Value::Nil => Unexpected::Unit,
             Value::Bool(b) => Unexpected::Bool(b),
+            Value::Char(b) => Unexpected::Char(b),
             Value::Number(ref n) => n.unexpected(),
             Value::String(ref s) => Unexpected::Str(s),
             Value::Vector(_) => Unexpected::Seq,

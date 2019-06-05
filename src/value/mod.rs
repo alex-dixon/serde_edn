@@ -195,6 +195,7 @@ pub enum Value {
     Vector(Vec<Value>),
     List(Vec<Value>),
     Set(Vec<Value>),
+    Char(char),
 
     /// Represents an edn map.
     ///
@@ -222,7 +223,6 @@ pub enum Value {
     /// # }
     /// ```
     Keyword(Keyword),
-    //    Keyword2(String),
     Symbol(Symbol),
 }
 
@@ -238,6 +238,7 @@ impl Debug for Value {
         match *self {
             Value::Nil => formatter.debug_tuple("Nil").finish(),
             Value::Bool(v) => formatter.debug_tuple("Bool").field(&v).finish(),
+            Value::Char(v) => formatter.debug_tuple("Char").field(&v).finish(),
             Value::Number(ref v) => Debug::fmt(v, formatter),
             Value::String(ref v) => formatter.debug_tuple("String").field(v).finish(),
             Value::Vector(ref v) => formatter.debug_tuple("Vector").field(v).finish(),

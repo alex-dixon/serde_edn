@@ -147,6 +147,15 @@ fn round_trip(s: &str, v: Value) {
 }
 
 #[test]
+fn parse_char() {
+    assert_eq!(Value::Char('\n'), Value::from_str("\\newline").unwrap());
+    assert_eq!(Value::Char('n'), Value::from_str("\\n").unwrap());
+    assert_eq!(Value::from_str(r#"[\n \e \w \l \i \n \e]"#).unwrap(),
+               Value::Vector(vec![Value::Char('n'), Value::Char('e'), Value::Char('w'), Value::Char('l'), Value::Char('i'), Value::Char('n'), Value::Char('e')]),
+    )
+}
+
+#[test]
 fn parse_list() {
     let st = SimpleTypes::default();
 
