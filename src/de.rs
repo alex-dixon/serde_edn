@@ -1286,13 +1286,47 @@ impl<'de, 'a, R: Read<'de>> EDNDeserializer<'de> for &'a mut Deserializer<R> {
                     }
                     Some(b'r') => {
                         self.eat_char();
-                        match self.parse_ident(b"eturn") {
-                            Err(_) => return Err(self.peek_error(ErrorCode::UnsupportedCharacter)),
-                            Ok(_) => visitor.visit_char('\r')
+                        match try!(self.peek()) {
+                            Some(b' ') | Some(b'\n') | Some(b'\t') | Some(b'\r') | Some(b',') =>
+                                visitor.visit_char('r'),
+                            Some(_) =>
+                                match self.parse_ident(b"eturn") {
+                                    Err(_) => return Err(self.peek_error(ErrorCode::UnsupportedCharacter)),
+                                    Ok(_) => visitor.visit_char('\r')
+                                }
+                            // eof
+                            None =>  visitor.visit_char('r')
                         }
                     }
-                    Some(b's') => unimplemented!(),
-                    Some(b't') => unimplemented!(),
+                    Some(b's') => {
+                        self.eat_char();
+                        match try!(self.peek()) {
+                            Some(b' ') | Some(b'\n') | Some(b'\t') | Some(b'\r') | Some(b',') =>
+                                visitor.visit_char('s'),
+                            Some(_) =>
+                                match self.parse_ident(b"pace") {
+                                    Err(_) => return Err(self.peek_error(ErrorCode::UnsupportedCharacter)),
+                                    Ok(_) => visitor.visit_char(' ')
+                                }
+                            // eof
+                            None =>  visitor.visit_char('s')
+                        }
+                    }
+                    Some(b't') => {
+                        self.eat_char();
+                        match try!(self.peek()) {
+                            Some(b' ') | Some(b'\n') | Some(b'\t') | Some(b'\r') | Some(b',') =>
+                                visitor.visit_char('t'),
+                            Some(_) =>
+                                match self.parse_ident(b"ab") {
+                                    Err(_) => return Err(self.peek_error(ErrorCode::UnsupportedCharacter)),
+                                    Ok(_) => visitor.visit_char('\t')
+                                }
+                            // eof
+                            None => visitor.visit_char('t')
+                        }
+                    }
+
                     Some(c) => {
                         self.eat_char();
                         match c {

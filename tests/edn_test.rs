@@ -149,10 +149,14 @@ fn round_trip(s: &str, v: Value) {
 #[test]
 fn parse_char() {
     assert_eq!(Value::Char('\n'), Value::from_str("\\newline").unwrap());
+    assert_eq!(Value::Char('\r'), Value::from_str("\\return").unwrap());
+    assert_eq!(Value::Char('\t'), Value::from_str("\\tab").unwrap());
+    assert_eq!(Value::Char(' '), Value::from_str("\\space").unwrap());
     assert_eq!(Value::Char('n'), Value::from_str("\\n").unwrap());
     assert_eq!(Value::from_str(r#"[\n \e \w \l \i \n \e]"#).unwrap(),
                Value::Vector(vec![Value::Char('n'), Value::Char('e'), Value::Char('w'), Value::Char('l'), Value::Char('i'), Value::Char('n'), Value::Char('e')]),
-    )
+    );
+    assert_eq!(Value::Char('z'), Value::from_str("\\z").unwrap());
 }
 
 #[test]
