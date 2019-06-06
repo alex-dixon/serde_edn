@@ -145,6 +145,13 @@ fn round_trip(s: &str, v: Value) {
     let b = to_string(&v).unwrap();
     assert_eq!(b, s)
 }
+fn round_trip2(s: &str, ) {
+    let a = Value::from_str(s).unwrap();
+//    assert_eq!(a, v);
+
+    let b = to_string(&a).unwrap();
+    assert_eq!(b, s)
+}
 
 #[test]
 fn parse_char() {
@@ -157,6 +164,15 @@ fn parse_char() {
                Value::Vector(vec![Value::Char('n'), Value::Char('e'), Value::Char('w'), Value::Char('l'), Value::Char('i'), Value::Char('n'), Value::Char('e')]),
     );
     assert_eq!(Value::Char('z'), Value::from_str("\\z").unwrap());
+}
+#[test]
+fn serialize_char() {
+//    round_trip2("\\newline");
+    assert_eq!(to_string(&Value::Char('\n')).unwrap(), "\\newline");
+    assert_eq!(to_string(&Value::Char(' ')).unwrap(), "\\space");
+    assert_eq!(to_string(&Value::Char('\r')).unwrap(), "\\return");
+    assert_eq!(to_string(&Value::Char('\t')).unwrap(), "\\tab");
+    assert_eq!(to_string(&Value::Char('n')).unwrap(), "\\n");
 }
 
 #[test]

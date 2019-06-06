@@ -318,8 +318,31 @@ where
     #[inline]
     fn serialize_char(self, value: char) -> Result<()> {
         // A char encoded as UTF-8 takes 4 bytes at most.
-        let mut buf = [0; 4];
-        self.serialize_str(value.encode_utf8(&mut buf))
+        match value {
+            '\n' => {
+                self.formatter.write_bytes(&mut self.writer, b"\\newline")
+                    .map_err(Error::io)
+            },
+            '\r' => {
+                self.formatter.write_bytes(&mut self.writer, b"\\return")
+                    .map_err(Error::io)
+            },
+            '\t' => {
+                self.formatter.write_bytes(&mut self.writer, b"\\tab")
+                    .map_err(Error::io)
+            },
+            ' ' => {
+                self.formatter.write_bytes(&mut self.writer, b"\\space")
+                    .map_err(Error::io)
+            },
+            c => {
+                let mut buf = [0; 4];
+                let s = c.encode_utf8(&mut buf);
+                self.formatter.write_bytes(&mut self.writer, &[b'\\']);
+                self.formatter.write_bytes(&mut self.writer, s.as_bytes())
+                    .map_err(Error::io)
+            }
+        }
     }
 
     #[inline]
@@ -2280,6 +2303,14 @@ pub trait Formatter {
         W: io::Write,
     {
         writer.write_all(b"nil")
+    }
+    //using for char
+    #[inline]
+    fn write_bytes<W: ?Sized>(&mut self, writer: &mut W,value:&[u8]) -> io::Result<()>
+        where
+            W: io::Write,
+    {
+        writer.write_all(value)
     }
 
     /// Writes a `true` or `false` value to the specified writer.
