@@ -731,7 +731,7 @@ impl<'a> SliceRead<'a> {
                         // Fast path: return a slice of the raw edn without any
                         // copying.
                         let borrowed = &self.slice[start..self.index];
-                        self.index += 1;
+//                        self.index += 1; //leave the  whitespace for map delineation
                         return result(self, borrowed).map(Reference::Borrowed);
                     } else {
                         //  todo. expect scratch to be empty always because we don't deal with escape sequences,

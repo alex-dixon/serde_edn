@@ -58,7 +58,7 @@
 //!     Number(Number),
 //!     String(String),
 //!     Vector(Vec<Value>),
-//!     Object(Map<String, Value>),
+//!     Object(Map<Value, Value>),
 //! }
 //! ```
 //!
@@ -347,6 +347,8 @@ extern crate indexmap;
 extern crate itoa;
 extern crate ryu;
 extern crate uuid;
+extern crate float_cmp;
+extern crate core;
 
 #[doc(inline)]
 pub use self::de::{from_reader, from_slice, from_str, Deserializer, StreamDeserializer};
@@ -357,7 +359,7 @@ pub use self::ser::{
     to_string, to_string_pretty, to_vec, to_vec_pretty, to_writer, to_writer_pretty, Serializer,
 };
 #[doc(inline)]
-pub use self::value::{from_value, to_value, Map, Number, Value,Keyword};
+pub use self::value::{from_value, to_value, MapInternal, Number, Value, Keyword};
 
 // We only use our own error type; no need for From conversions provided by the
 // standard library's try! macro. This reduces lines of LLVM IR by 4%.

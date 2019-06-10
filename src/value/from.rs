@@ -9,7 +9,7 @@
 use std::borrow::Cow;
 
 use super::Value;
-use map::Map;
+use map::{MapInternal, Map};
 use number::Number;
 
 macro_rules! from_integer {
@@ -169,8 +169,8 @@ impl<'a> From<Cow<'a, str>> for Value {
     }
 }
 
-impl From<Map<String, Value>> for Value {
-    /// Convert map (with string keys) to `Value`
+impl From<Map<Value, Value>> for Value {
+    /// Convert map to `Value`
     ///
     /// # Examples
     ///
@@ -178,14 +178,14 @@ impl From<Map<String, Value>> for Value {
     /// # extern crate serde_edn;
     /// #
     /// # fn main() {
-    /// use serde_edn::{Map, Value};
+    /// use serde_edn::{MapInternal, Value};
     ///
-    /// let mut m = Map::new();
+    /// let mut m = MapInternal::new();
     /// m.insert("Lorem".to_string(), "ipsum".into());
     /// let x: Value = m.into();
     /// # }
     /// ```
-    fn from(f: Map<String, Value>) -> Self {
+    fn from(f: Map<Value, Value>) -> Self {
         Value::Object(f)
     }
 }

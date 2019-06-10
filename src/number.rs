@@ -22,6 +22,7 @@ use de::ParserNumber;
 
 #[cfg(feature = "arbitrary_precision")]
 use error::ErrorCode;
+use std::hash::{Hash, Hasher};
 
 #[cfg(feature = "arbitrary_precision")]
 /// Not public API. Should be pub(crate).
@@ -29,7 +30,7 @@ use error::ErrorCode;
 pub const TOKEN: &'static str = "$serde_edn::private::Number";
 
 /// Represents a edn number, whether integer or floating point.
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq,Hash)]
 pub struct Number {
     n: N,
 }
@@ -42,6 +43,16 @@ enum N {
     NegInt(i64),
     /// Always finite.
     Float(f64),
+}
+impl  Hash for N {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+//        unimplemented!()
+        match *self {
+            N::PosInt(n) => n.hash(state),
+            N::NegInt(n) => n.hash(state),
+            N::Float(n) => (n as u64).hash(state),
+        }
+    }
 }
 
 #[cfg(feature = "arbitrary_precision")]

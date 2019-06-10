@@ -11,9 +11,8 @@
 use std::io;
 use std::marker::PhantomData;
 use std::result;
-use std::str::{FromStr, from_utf8};
+use std::str::{FromStr};
 use std::{i32, u64};
-use std::ops::Deref;
 
 use serde::de::{self, Expected, Unexpected, Visitor};
 
@@ -26,21 +25,12 @@ pub use read::{IoRead, Read, SliceRead, StrRead};
 use number::Number;
 #[cfg(feature = "arbitrary_precision")]
 use number::NumberDeserializer;
-//use keyword::{Keyword, KeywordDeserializer};
-use keyword::{Keyword, KeywordDeserializer};
-use Value;
+use keyword::{KeywordDeserializer};
 use symbol::SymbolDeserializer;
-use edn_de::{EDNDeserialize, EDNDeserializer, EDNVisitor, EDNDeserializeOwned, EDNDeserializeSeed, EDNSeqAccess};
+use edn_de::{EDNDeserialize, EDNDeserializer, EDNVisitor, EDNDeserializeOwned, EDNDeserializeSeed, EDNSeqAccess, EDNMapAccess};
 use serde::Deserialize;
-use uuid::Uuid;
+//use uuid::Uuid;
 
-//impl <'de,T> EDNDeserialize<'de> for T
-//where T: serde::de::Deserialize {
-//    fn deserialize<D>(deserializer: D) -> Result<Self> where
-//        D: EDNDeserializer<'de> {
-//        serde::de::Deserialize::deserialize(deserializer)
-//    }
-//}
 
 //////////////////////////////////////////////////////////////////////////////
 
@@ -1088,7 +1078,7 @@ impl<'de, 'a, R: Read<'de>> EDNDeserializer<'de> for &'a mut Deserializer<R> {
                     ParseDecision::Symbol => {
                         match try!(self.read.parse_symbol_offset(&mut self.scratch, offset)) {
                             Reference::Borrowed(s) => {
-                                visitor.visit_map(SymbolDeserializer {
+                                serde::de::Visitor::visit_map(visitor, SymbolDeserializer {
                                     value: s
                                 })
                             }
@@ -1112,7 +1102,7 @@ impl<'de, 'a, R: Read<'de>> EDNDeserializer<'de> for &'a mut Deserializer<R> {
                     ParseDecision::Reserved => visitor.visit_bool(true),
                     ParseDecision::Symbol => match try!(self.read.parse_symbol_offset(&mut self.scratch, offset)) {
                         Reference::Borrowed(s) => {
-                            visitor.visit_map(SymbolDeserializer {
+                            serde::de::Visitor::visit_map(visitor, SymbolDeserializer {
                                 value: s
                             })
                         }
@@ -1135,7 +1125,7 @@ impl<'de, 'a, R: Read<'de>> EDNDeserializer<'de> for &'a mut Deserializer<R> {
                     ParseDecision::Reserved => visitor.visit_bool(false),
                     ParseDecision::Symbol => match try!(self.read.parse_symbol_offset(&mut self.scratch, offset)) {
                         Reference::Borrowed(s) => {
-                            visitor.visit_map(SymbolDeserializer {
+                            serde::de::Visitor::visit_map(visitor, SymbolDeserializer {
                                 value: s
                             })
                         }
@@ -1152,7 +1142,7 @@ impl<'de, 'a, R: Read<'de>> EDNDeserializer<'de> for &'a mut Deserializer<R> {
                 self.scratch.clear();
                 match try!(self.read.parse_keyword(&mut self.scratch)) {
                     Reference::Borrowed(s) => {
-                        visitor.visit_map(KeywordDeserializer {
+                        serde::de::Visitor::visit_map(visitor, KeywordDeserializer {
                             value: s
                         })
                     }
@@ -1249,7 +1239,7 @@ impl<'de, 'a, R: Read<'de>> EDNDeserializer<'de> for &'a mut Deserializer<R> {
                             }
                             ParseDecision::Symbol => match try!(self.read.parse_symbol_offset(&mut self.scratch, offset)) {
                                 Reference::Borrowed(s) => {
-                                    visitor.visit_map(SymbolDeserializer {
+                                    serde::de::Visitor::visit_map(visitor, SymbolDeserializer {
                                         value: s
                                     })
                                 }
@@ -1347,7 +1337,7 @@ impl<'de, 'a, R: Read<'de>> EDNDeserializer<'de> for &'a mut Deserializer<R> {
                 }
 
                 self.eat_char();
-                let ret = visitor.visit_map(MapAccess::new(self));
+                let ret = EDNVisitor::visit_map(visitor, MapAccess::new(self));
 
                 self.remaining_depth += 1;
 
@@ -1358,10 +1348,9 @@ impl<'de, 'a, R: Read<'de>> EDNDeserializer<'de> for &'a mut Deserializer<R> {
             }
             c => {
                 self.scratch.clear();
-                println!("{}",String::from_utf8(vec![c]).unwrap());
                 match try!(self.read.parse_symbol(&mut self.scratch)) {
                     Reference::Borrowed(s) => {
-                        visitor.visit_map(SymbolDeserializer {
+                        serde::de::Visitor::visit_map(visitor, SymbolDeserializer {
                             value: s
                         })
                     }
@@ -1568,20 +1557,22 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
 //                }
             }
             b'{' => {
-                self.remaining_depth -= 1;
-                if self.remaining_depth == 0 {
-                    return Err(self.peek_error(ErrorCode::RecursionLimitExceeded));
-                }
 
-                self.eat_char();
-                let ret = visitor.visit_map(MapAccess::new(self));
-
-                self.remaining_depth += 1;
-
-                match (ret, self.end_map()) {
-                    (Ok(ret), Ok(())) => Ok(ret),
-                    (Err(err), _) | (_, Err(err)) => Err(err),
-                }
+                unreachable!("serde::Deserializer::deserialize_any");
+//                self.remaining_depth -= 1;
+//                if self.remaining_depth == 0 {
+//                    return Err(self.peek_error(ErrorCode::RecursionLimitExceeded));
+//                }
+//
+//                self.eat_char();
+//                let ret = visitor.visit_map(MapAccess::new(self));
+//
+//                self.remaining_depth += 1;
+//
+//                match (ret, self.end_map()) {
+//                    (Ok(ret), Ok(())) => Ok(ret),
+//                    (Err(err), _) | (_, Err(err)) => Err(err),
+//                }
             }
             c => {
                 self.scratch.clear();
@@ -2274,6 +2265,39 @@ impl<'a, R: 'a> MapAccess<'a, R> {
             de: de,
             first: true,
         }
+    }
+}
+
+impl<'de, 'a, R: Read<'de> + 'a> EDNMapAccess<'de> for MapAccess<'a, R> {
+    type Error = Error;
+
+    fn next_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>>
+        where
+            K: EDNDeserializeSeed<'de>,
+    {
+        let peek = match try!(self.de.parse_whitespace()) {
+            Some(b'}') => {
+                return Ok(None);
+            }
+            Some(b) => Some(b),
+            None => {
+                return Err(self.de.peek_error(ErrorCode::EofWhileParsingObject));
+            }
+        };
+
+        match peek {
+            Some(_) => seed.deserialize( &mut *self.de ).map(Some),
+            None => Err(self.de.peek_error(ErrorCode::EofWhileParsingValue)),
+        }
+    }
+
+    fn next_value_seed<V>(&mut self, seed: V) -> Result<V::Value>
+        where
+            V: EDNDeserializeSeed<'de>,
+    {
+        try!(self.de.parse_object_colon());
+
+        seed.deserialize(&mut *self.de)
     }
 }
 

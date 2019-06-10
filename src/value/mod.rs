@@ -116,7 +116,7 @@ use serde::de::DeserializeOwned;
 use serde::ser::Serialize;
 
 use error::Error;
-pub use map::Map;
+pub use map::MapInternal;
 pub use number::Number;
 
 #[cfg(feature = "raw_value")]
@@ -128,11 +128,13 @@ use self::ser::Serializer;
 pub use symbol::Symbol;
 pub use keyword::Keyword;
 use edn_ser::EDNSerialize;
+use std::cmp::Ordering;
+use map::Map;
 
 /// Represents any valid edn value.
 ///
 /// See the `serde_edn::value` module documentation for usage examples.
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq,Hash)]
 pub enum Value {
     /// Represents a edn null value.
     ///
@@ -213,7 +215,7 @@ pub enum Value {
     /// let v = edn!({ "an": "object" });
     /// # }
     /// ```
-    Object(Map<String, Value>),
+    Object(Map<Value, Value>),
     /// ```rust
     /// # #[macro_use]
     /// # extern crate serde_edn;
@@ -228,10 +230,34 @@ pub enum Value {
 
 impl PartialEq<&Value> for Value {
     fn eq(&self, &other: &&Value) -> bool {
-        false
+        unimplemented!()
+        // todo.
+//        println!("self other {:?} {:?}",self,other);
 //        PartialEq::eq(&self, *&other)
     }
 }
+impl PartialEq<Map<Value,Value>>  for  Value {
+    fn eq(&self, other: &Map<Value, Value>) -> bool {
+//        unimplemented!()
+        println!("self other {:?} {:?}",self,other);
+        match self {
+            Value::Object(m)=> m.eq(other),
+            _=>false
+
+        }
+    }
+}
+impl Ord for Value {
+    fn cmp(&self, other: &Self) -> Ordering {
+        unimplemented!()
+    }
+}
+impl PartialOrd for Value {
+    fn partial_cmp(&self, other: &Value) -> Option<Ordering> {
+        unimplemented!()
+    }
+}
+impl Eq for Value { }
 
 impl Debug for Value {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
@@ -435,7 +461,7 @@ impl Value {
     /// assert_eq!(v["b"].as_object(), None);
     /// # }
     /// ```
-    pub fn as_object(&self) -> Option<&Map<String, Value>> {
+    pub fn as_object(&self) -> Option<&Map<Value, Value>> {
         match *self {
             Value::Object(ref map) => Some(map),
             _ => None,
@@ -457,7 +483,7 @@ impl Value {
     /// # }
     ///
     /// ```
-    pub fn as_object_mut(&mut self) -> Option<&mut Map<String, Value>> {
+    pub fn as_object_mut(&mut self) -> Option<&mut Map<Value, Value>> {
         match *self {
             Value::Object(ref mut map) => Some(map),
             _ => None,
@@ -892,33 +918,33 @@ impl Value {
     /// assert_eq!(data.pointer("/a/b/c"), None);
     /// # }
     /// ```
-    pub fn pointer<'a>(&'a self, pointer: &str) -> Option<&'a Value> {
-        if pointer == "" {
-            return Some(self);
-        }
-        if !pointer.starts_with('/') {
-            return None;
-        }
-        let tokens = pointer
-            .split('/')
-            .skip(1)
-            .map(|x| x.replace("~1", "/").replace("~0", "~"));
-        let mut target = self;
-
-        for token in tokens {
-            let target_opt = match *target {
-                Value::Object(ref map) => map.get(&token),
-                Value::Vector(ref list) => parse_index(&token).and_then(|x| list.get(x)),
-                _ => return None,
-            };
-            if let Some(t) = target_opt {
-                target = t;
-            } else {
-                return None;
-            }
-        }
-        Some(target)
-    }
+//    pub fn pointer<'a>(&'a self, pointer: &str) -> Option<&'a Value> {
+//        if pointer == "" {
+//            return Some(self);
+//        }
+//        if !pointer.starts_with('/') {
+//            return None;
+//        }
+//        let tokens = pointer
+//            .split('/')
+//            .skip(1)
+//            .map(|x| x.replace("~1", "/").replace("~0", "~"));
+//        let mut target = self;
+//
+//        for token in tokens {
+//            let target_opt = match *target {
+//                Value::Object(ref map) => map.get(&token),
+//                Value::Vector(ref list) => parse_index(&token).and_then(|x| list.get(x)),
+//                _ => return None,
+//            };
+//            if let Some(t) = target_opt {
+//                target = t;
+//            } else {
+//                return None;
+//            }
+//        }
+//        Some(target)
+//    }
 
     /// Looks up a value by a edn Pointer and returns a mutable reference to
     /// that value.
@@ -957,38 +983,38 @@ impl Value {
     ///     assert_eq!(value.pointer("/x").unwrap(), &Value::Nil);
     /// }
     /// ```
-    pub fn pointer_mut<'a>(&'a mut self, pointer: &str) -> Option<&'a mut Value> {
-        if pointer == "" {
-            return Some(self);
-        }
-        if !pointer.starts_with('/') {
-            return None;
-        }
-        let tokens = pointer
-            .split('/')
-            .skip(1)
-            .map(|x| x.replace("~1", "/").replace("~0", "~"));
-        let mut target = self;
-
-        for token in tokens {
-            // borrow checker gets confused about `target` being mutably borrowed too many times because of the loop
-            // this once-per-loop binding makes the scope clearer and circumvents the error
-            let target_once = target;
-            let target_opt = match *target_once {
-                Value::Object(ref mut map) => map.get_mut(&token),
-                Value::Vector(ref mut list) => {
-                    parse_index(&token).and_then(move |x| list.get_mut(x))
-                }
-                _ => return None,
-            };
-            if let Some(t) = target_opt {
-                target = t;
-            } else {
-                return None;
-            }
-        }
-        Some(target)
-    }
+//    pub fn pointer_mut<'a>(&'a mut self, pointer: &str) -> Option<&'a mut Value> {
+//        if pointer == "" {
+//            return Some(self);
+//        }
+//        if !pointer.starts_with('/') {
+//            return None;
+//        }
+//        let tokens = pointer
+//            .split('/')
+//            .skip(1)
+//            .map(|x| x.replace("~1", "/").replace("~0", "~"));
+//        let mut target = self;
+//
+//        for token in tokens {
+//            // borrow checker gets confused about `target` being mutably borrowed too many times because of the loop
+//            // this once-per-loop binding makes the scope clearer and circumvents the error
+//            let target_once = target;
+//            let target_opt = match *target_once {
+//                Value::Object(ref mut map) => map.get_mut(&token),
+//                Value::Vector(ref mut list) => {
+//                    parse_index(&token).and_then(move |x| list.get_mut(x))
+//                }
+//                _ => return None,
+//            };
+//            if let Some(t) = target_opt {
+//                target = t;
+//            } else {
+//                return None;
+//            }
+//        }
+//        Some(target)
+//    }
 
     /// Takes the value out of the `Value`, leaving a `Nil` in its place.
     ///

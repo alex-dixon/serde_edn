@@ -1,10 +1,10 @@
 use error::Error;
 use serde::{Serialize, Serializer, Deserialize, Deserializer};
 use serde::de::{self, Visitor, MapAccess, IntoDeserializer};
-use std::fmt::{self, Debug, Display};
+use std::fmt::{self, Debug};
 use std::str::FromStr;
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq,Hash)]
 pub struct Keyword {
     pub value: Option<String>,
 }

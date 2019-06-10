@@ -1,6 +1,4 @@
-use serde::de::{SeqAccess, Unexpected, Visitor};
-use ::{Error, Value};
-use std::str::FromStr;
+use serde::de::{SeqAccess,  Visitor};
 use serde::export::PhantomData;
 
 pub trait EDNVisitor<'de>: Sized + Visitor<'de> {
@@ -39,6 +37,15 @@ pub trait EDNVisitor<'de>: Sized + Visitor<'de> {
     where E:serde::de::Error{
         unimplemented!()
     }
+
+    fn visit_map<A>(self, map: A) -> Result<Self::Value, A::Error>
+        where
+            A: EDNMapAccess<'de>,
+    {
+        let _ = map;
+//        Err(Error::invalid_type(Unexpected::Map, &self))
+        unimplemented!()
+    }
 }
 
 pub trait EDNDeserializer<'de>: Sized {
@@ -66,14 +73,11 @@ impl<T> EDNDeserializeOwned for T where T: for<'de> EDNDeserialize<'de> {}
 
 pub trait EDNDeserializeSeed<'de>: Sized //+ serde::de::DeserializeSeed<'de>
 {
-    /// The type produced by using this seed.
     type Value;
 
-    /// Equivalent to the more common `Deserialize::deserialize` method, except
-    /// with some initial piece of data (the seed) passed in.
     fn deserialize<D>(self, deserializer: D) -> Result<<Self as EDNDeserializeSeed<'de>>::Value, <D as EDNDeserializer<'de>>::Error>
         where
-            D: EDNDeserializer<'de> + serde::Deserializer<'de>;
+            D: EDNDeserializer<'de>; //+ serde::Deserializer<'de>;
 }
 
 impl<'de, T> EDNDeserializeSeed<'de> for PhantomData<T>
@@ -141,21 +145,159 @@ impl<'de, 'a, A> EDNSeqAccess<'de> for &'a mut A
     }
 }
 
+pub trait EDNMapAccess<'de> {
+    type Error: serde::de::Error;
 
-#[test]
-fn main() {
-//    let x = Value::from_str(r#"(foo "bar")"#);
-//    let x = Value::from_str(r#"(false (bar"baz"))"#);
-//    let x = Value::from_str(r#"(println(println[[(true)]"hi"]))"#).unwrap();
+    fn next_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>, Self::Error>
+        where
+            K: EDNDeserializeSeed<'de>;
 
-    let x = Value::from_str(r#"(println(println[[:foo [(true 1 42.0)]]"hi"]))"#).unwrap();
-//    let x = Value::from_str(r#"(println(println[(true)"hi"]))"#).unwrap();
+    fn next_value_seed<V>(&mut self, seed: V) -> Result<V::Value, Self::Error>
+        where
+            V: EDNDeserializeSeed<'de>;
 
-    let k = Value::from_str(":foo");
-    println!("x {:?}", &x);
-    println!("x {}", &x);
-    println!("one more again");
-    println!("{}", format!("{}", &x));
-    println!("k {:?}", k.unwrap());
-    assert_eq!(false, true)
+    #[inline]
+    fn next_entry_seed<K, V>(
+        &mut self,
+        kseed: K,
+        vseed: V,
+    ) -> Result<Option<(K::Value, V::Value)>, Self::Error>
+        where
+            K: EDNDeserializeSeed<'de>,
+            V: EDNDeserializeSeed<'de>,
+    {
+        match try!(self.next_key_seed(kseed)) {
+            Some(key) => {
+                let value = try!(self.next_value_seed(vseed));
+                Ok(Some((key, value)))
+            }
+            None => Ok(None),
+        }
+    }
+
+    #[inline]
+    fn next_key<K>(&mut self) -> Result<Option<K>, Self::Error>
+        where
+            K: EDNDeserialize<'de>,
+    {
+        self.next_key_seed(PhantomData)
+    }
+
+    #[inline]
+    fn next_value<V>(&mut self) -> Result<V, Self::Error>
+        where
+            V: EDNDeserialize<'de>,
+    {
+        self.next_value_seed(PhantomData)
+    }
+
+    #[inline]
+    fn next_entry<K, V>(&mut self) -> Result<Option<(K, V)>, Self::Error>
+        where
+            K: EDNDeserialize<'de>,
+            V: EDNDeserialize<'de>,
+    {
+        self.next_entry_seed(PhantomData, PhantomData)
+    }
+
+    #[inline]
+    fn size_hint(&self) -> Option<usize> {
+        None
+    }
+}
+
+impl<'de, 'a, A> EDNMapAccess<'de> for &'a mut A
+    where
+        A: EDNMapAccess<'de>,
+{
+    type Error = A::Error;
+
+    #[inline]
+    fn next_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>, Self::Error>
+        where
+            K: EDNDeserializeSeed<'de>,
+    {
+        (**self).next_key_seed(seed)
+    }
+
+    #[inline]
+    fn next_value_seed<V>(&mut self, seed: V) -> Result<V::Value, Self::Error>
+        where
+            V: EDNDeserializeSeed<'de>,
+    {
+        (**self).next_value_seed(seed)
+    }
+
+    #[inline]
+    fn next_entry_seed<K, V>(
+        &mut self,
+        kseed: K,
+        vseed: V,
+    ) -> Result<Option<(K::Value, V::Value)>, Self::Error>
+        where
+            K: EDNDeserializeSeed<'de>,
+            V: EDNDeserializeSeed<'de>,
+    {
+        (**self).next_entry_seed(kseed, vseed)
+    }
+
+    #[inline]
+    fn next_entry<K, V>(&mut self) -> Result<Option<(K, V)>, Self::Error>
+        where
+            K: EDNDeserialize<'de>,
+            V: EDNDeserialize<'de>,
+    {
+        (**self).next_entry()
+    }
+
+    #[inline]
+    fn next_key<K>(&mut self) -> Result<Option<K>, Self::Error>
+        where
+            K: EDNDeserialize<'de>,
+    {
+        (**self).next_key()
+    }
+
+    #[inline]
+    fn next_value<V>(&mut self) -> Result<V, Self::Error>
+        where
+            V: EDNDeserialize<'de>,
+    {
+        (**self).next_value()
+    }
+
+    #[inline]
+    fn size_hint(&self) -> Option<usize> {
+        (**self).size_hint()
+    }
+}
+
+pub trait EDNVariantAccess<'de>: Sized {
+    type Error: serde::de::Error;
+
+    fn unit_variant(self) -> Result<(), Self::Error>;
+
+    fn newtype_variant_seed<T>(self, seed: T) -> Result<T::Value, Self::Error>
+        where
+            T: EDNDeserializeSeed<'de>;
+
+    #[inline]
+    fn newtype_variant<T>(self) -> Result<T, Self::Error>
+        where
+            T: EDNDeserialize<'de>,
+    {
+        self.newtype_variant_seed(PhantomData)
+    }
+
+    fn tuple_variant<V>(self, len: usize, visitor: V) -> Result<V::Value, Self::Error>
+        where
+            V: EDNVisitor<'de>;
+
+    fn struct_variant<V>(
+        self,
+        fields: &'static [&'static str],
+        visitor: V,
+    ) -> Result<V::Value, Self::Error>
+        where
+            V: EDNVisitor<'de>;
 }

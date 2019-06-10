@@ -10,7 +10,7 @@ use serde::ser::Impossible;
 use serde::{self, Serialize};
 
 use error::{Error, ErrorCode};
-use map::Map;
+use map::{ Map};
 use number::Number;
 use value::{to_value, Value};
 use edn_ser::{EDNSerializer, EDNSerialize, SerializeList, SerializeVector, SerializeSet};
@@ -419,7 +419,10 @@ impl serde::Serializer for Serializer {
         T: Serialize,
     {
         let mut values = Map::new();
-        values.insert(String::from(variant), try!(to_value(&value)));
+        //  todo. trying to tease out internal use of the api from actual
+        // come back to this ... not sure this is a good serialize format,
+        //  or what this is being used for
+        values.insert(Value::String(variant.to_string()), try!(to_value(&value)));
         Ok(Value::Object(values))
     }
 
@@ -566,7 +569,7 @@ pub struct SerializeTupleVariant {
 
 pub enum SerializeMap {
     Map {
-        map: Map<String, Value>,
+        map: Map<Value, Value>,
         next_key: Option<String>,
     },
     #[cfg(feature = "arbitrary_precision")]
@@ -577,7 +580,7 @@ pub enum SerializeMap {
 
 pub struct SerializeStructVariant {
     name: String,
-    map: Map<String, Value>,
+    map: Map<Value, Value>,
 }
 
 impl serde::ser::SerializeSeq for SerializeVec {
@@ -644,7 +647,7 @@ impl serde::ser::SerializeTupleVariant for SerializeTupleVariant {
     fn end(self) -> Result<Value, Error> {
         let mut object = Map::new();
 
-        object.insert(self.name, Value::Vector(self.vec));
+        object.insert(Value::String(self.name), Value::Vector(self.vec));
 
         Ok(Value::Object(object))
     }
@@ -685,7 +688,8 @@ impl serde::ser::SerializeMap for SerializeMap {
                 // Panic because this indicates a bug in the program rather than an
                 // expected failure.
                 let key = key.expect("serialize_value called before serialize_key");
-                map.insert(key, try!(to_value(&value)));
+                // todo. no  real idea what's being done here
+                map.insert(try!(to_value(&key)), try!(to_value(&value)));
                 Ok(())
             }
             #[cfg(feature = "arbitrary_precision")]
@@ -946,14 +950,15 @@ impl serde::ser::SerializeStructVariant for SerializeStructVariant {
     where
         T: Serialize,
     {
-        self.map.insert(String::from(key), try!(to_value(&value)));
+        // todo. don't know what this is being used for yet
+        self.map.insert(try!(to_value(key)), try!(to_value(&value)));
         Ok(())
     }
 
     fn end(self) -> Result<Value, Error> {
         let mut object = Map::new();
 
-        object.insert(self.name, Value::Object(self.map));
+        object.insert(Value::String(self.name), Value::Object(self.map));
 
         Ok(Value::Object(object))
     }

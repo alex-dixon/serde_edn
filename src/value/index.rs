@@ -10,7 +10,7 @@ use std::fmt;
 use std::ops;
 
 use super::Value;
-use map::Map;
+use map::{ Map};
 
 /// A type that can be used to index into a `serde_edn::Value`.
 ///
@@ -44,7 +44,7 @@ use map::Map;
 /// assert_eq!(first, 1);
 /// # }
 /// ```
-pub trait Index: private::Sealed {
+pub trait Index {
     /// Return None if the key is not already in the vector or object.
     #[doc(hidden)]
     fn index_into<'v>(&self, v: &'v Value) -> Option<&'v Value>;
@@ -89,8 +89,7 @@ impl Index for usize {
         }
     }
 }
-
-impl Index for str {
+impl Index for Value {
     fn index_into<'v>(&self, v: &'v Value) -> Option<&'v Value> {
         match *v {
             Value::Object(ref map) => map.get(self),
@@ -102,6 +101,32 @@ impl Index for str {
             Value::Object(ref mut map) => map.get_mut(self),
             _ => None,
         }
+    }
+    fn index_or_insert<'v>(&self, v: &'v mut Value) -> &'v mut Value {
+        if let Value::Nil = *v {
+            *v = Value::Object(Map::new());
+        }
+        match *v {
+            Value::Object(ref mut map) => map.entry(self.to_owned()).or_insert(Value::Nil),
+            _ => panic!("cannot access key {:?} in edn {}", self, Type(v)),
+        }
+    }
+}
+
+impl Index for str {
+    fn index_into<'v>(&self, v: &'v Value) -> Option<&'v Value> {
+        unimplemented!()
+//        match *v {
+//            Value::Object(ref map) => map.get(self),
+//            _ => None,
+//        }
+    }
+    fn index_into_mut<'v>(&self, v: &'v mut Value) -> Option<&'v mut Value> {
+        unimplemented!()
+//        match *v {
+//            Value::Object(ref mut map) => map.get_mut(self),
+//            _ => None,
+//        }
     }
     fn index_or_insert<'v>(&self, v: &'v mut Value) -> &'v mut Value {
         if let Value::Nil = *v {

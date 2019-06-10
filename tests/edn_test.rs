@@ -32,15 +32,13 @@ use serde::ser::{self, Serialize, Serializer};
 
 use serde_bytes::{ByteBuf, Bytes};
 
-use serde_edn::{
-    from_reader, from_slice, from_str, from_value, to_string, to_string_pretty, to_value, to_vec,
-    to_writer, Deserializer, Number, Value, Keyword,
-};
+use serde_edn::{from_reader, from_slice, from_str, from_value, to_string, to_string_pretty, to_value, to_vec, to_writer, Deserializer, Number, Value, Keyword, MapInternal};
 use serde_edn::value::Symbol;
 use serde_edn::edn_ser::EDNSerialize;
 use compiletest_rs::common::Mode::CompileFail;
 use std::fs::File;
 use std::io::{Write, BufReader};
+use serde_edn::map::Map;
 
 #[derive(Clone)]
 struct SimpleTypes {
@@ -173,6 +171,86 @@ fn serialize_char() {
     assert_eq!(to_string(&Value::Char('\r')).unwrap(), "\\return");
     assert_eq!(to_string(&Value::Char('\t')).unwrap(), "\\tab");
     assert_eq!(to_string(&Value::Char('n')).unwrap(), "\\n");
+}
+macro_rules! map(
+    { $($key:expr => $value:expr),+ } => {
+        {
+            let mut m = Map::new();
+            $(
+                m.insert($key, $value);
+            )+
+            Value::Object(m)
+        }
+     };
+);
+
+#[test]
+fn parse_map() {
+
+    let empty = Value::from_str(r#"{}"#).unwrap();
+    assert_eq!(empty, Value::Object(Map::new()));
+
+//    let max_float:String = Number::from_f64(f64::MAX).unwrap().to_string();
+//    assert_eq!(
+//        map!(number(&max_float)=>number("1")),
+//        map!(number(&max_float)=>number("1")),
+//    );
+
+    // float key
+    let b =  Value::from_str(r#"{42.39  foo 42.39 bar}"#).unwrap();
+    let mut bm = Map::new();
+    bm.insert(number("42.39"),symbol("foo"));
+    bm.insert(number("42.39"),symbol("bar"));
+    assert_eq!(b, Value::Object(bm));
+
+    let mut cm = Map::new();
+    cm.insert(number("42.39"),symbol("foo"));
+    cm.insert(number("42.39"),symbol("bar"));
+    assert_eq!(b, Value::Object(cm));
+
+
+    // vector key
+    let a =  Value::from_str(r#"{[42 43 44] bar}"#).unwrap();
+    let mut am = Map::new();
+    am.insert(
+        Value::Vector(vec![number("42"),number("43"),number("44")]),
+        symbol("bar")
+    );
+    assert_eq!(a, am.clone()); //  not sure the utility of this yet
+    assert_eq!(a, Value::Object(am));
+
+
+    // map key
+    assert_eq!(
+        map!(map!(keyword("a")=>number("1"))=> symbol("foo")),
+        map!(map!(keyword("a")=>number("1"))=> symbol("foo"))
+    );
+    assert_eq!(
+        Value::from_str(r#"{{:a 1} foo}"#).unwrap(),
+        map!(map!(keyword("a")=>number("1"))=> symbol("foo"))
+    );
+    assert_ne!(map!(map!(keyword("a")=>number("1"))=> symbol("foo")),
+               map!(map!(keyword("a")=>number("1"))=> symbol("bar"))
+    );
+    assert_ne!(map!(map!(keyword("b")=>number("1"))=> symbol("bar")),
+               map!(map!(keyword("a")=>number("1"))=> symbol("bar"))
+    );
+
+
+    // set key
+    assert_eq!(
+        Value::from_str(r#"{#{1 2 3} 1}"#).unwrap(),
+        map!(Value::Set(vec![number("1"),number("2"),number("3")])=>number("1"))
+    );
+
+
+    // list key
+    assert_eq!(
+        Value::from_str(r#"{(1 2 3) 1}"#).unwrap(),
+        map!(Value::List(vec![number("1"),number("2"),number("3")])=>number("1"))
+    )
+
+
 }
 
 #[test]

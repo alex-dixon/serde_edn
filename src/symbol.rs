@@ -1,7 +1,7 @@
 use error::Error;
 use serde::{Serialize, Serializer, Deserialize, Deserializer};
 use serde::de::{self, Visitor, MapAccess, IntoDeserializer};
-use std::fmt::{self, Debug, Display};
+use std::fmt::{self, Debug};
 use std::str::FromStr;
 
 
@@ -10,7 +10,7 @@ pub const FIELD: &'static str = "$__serde_edn_private_symbol";
 pub const NAME: &'static str = "$__serde_edn_private_Symbol";
 
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq,Hash)]
 pub struct Symbol {
     pub value: Option<String>,
 }

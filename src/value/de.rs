@@ -19,9 +19,10 @@ use serde::de::{
 };
 
 use error::Error;
-use map::Map;
+use map::{MapInternal, Map};
 use number::Number;
 use value::Value;
+use super::super::de::from_str;
 
 use serde::de;
 
@@ -29,7 +30,8 @@ use serde::de;
 use number::NumberFromString;
 use keyword::KeywordFromString;
 use symbol::{SymbolFromString, Symbol};
-use edn_de::{EDNDeserialize, EDNDeserializer, EDNVisitor, EDNSeqAccess};
+use edn_de::{EDNDeserialize, EDNDeserializer, EDNVisitor, EDNSeqAccess, EDNMapAccess, EDNDeserializeSeed, EDNVariantAccess};
+use std::str::FromStr;
 
 
 // note: This is serde's Deserialize!
@@ -148,14 +150,7 @@ impl<'de> Deserialize<'de> for Value {
                         ::from_str(value.get()).map_err(de::Error::custom)
                     }
                     Some(KeyClass::Map(first_key)) => {
-                        let mut values = Map::new();
-
-                        values.insert(first_key, try!(visitor.next_value()));
-                        while let Some((key, value)) = try!(visitor.next_entry()) {
-                            values.insert(key, value);
-                        }
-
-                        Ok(Value::Object(values))
+                        unreachable!()
                     }
                     None => Ok(Value::Object(Map::new())),
                 }
@@ -230,6 +225,25 @@ impl<'de> EDNDeserialize<'de> for Value {
             #[inline]
             fn visit_symbol<E>(self, s: &str) -> Result<Self::Value, E> {
                 Ok(Value::Symbol(Symbol{ value: Some(String::from(s))}))
+            }
+
+            fn visit_map<V>(self, mut visitor: V) -> Result<Value, V::Error>
+                where
+                    V: EDNMapAccess<'de>,
+            {
+                match try!(EDNMapAccess::next_key(&mut visitor)) {
+                    None => Ok(Value::Object(Map::new())),
+                    Some(key) => {
+                        let mut values: Map<Value, Value> = Map::new();
+
+                        values.insert(key, try!(visitor.next_value()));
+                        while let Some((key, value)) = try!(visitor.next_entry()) {
+                            values.insert(key, value);
+                        }
+
+                        Ok(Value::Object(values))
+                    }
+                }
             }
         }
 
@@ -334,17 +348,8 @@ impl<'de> EDNDeserialize<'de> for Value {
                         let value = visitor.next_value_seed(::raw::BoxedFromString)?;
                         ::from_str(value.get()).map_err(de::Error::custom)
                     }
-                    Some(KeyClass::Map(first_key)) => {
-                        let mut values = Map::new();
-
-                        values.insert(first_key, try!(visitor.next_value()));
-                        while let Some((key, value)) = try!(visitor.next_entry()) {
-                            values.insert(key, value);
-                        }
-
-                        Ok(Value::Object(values))
-                    }
-                    None => Ok(Value::Object(Map::new())),
+                    None => unreachable!(),
+                    Some(KeyClass::Map(_)) => unreachable!()
                 }
             }
         }
@@ -445,25 +450,39 @@ fn visit_set<'de, V>(vector: Vec<Value>, visitor: V) -> Result<V::Value, Error>
     }
 }
 
-fn visit_object<'de, V>(object: Map<String, Value>, visitor: V) -> Result<V::Value, Error>
+fn visit_object<'de, V>(object: Map<Value, Value>, visitor: V) -> Result<V::Value, Error>
     where
         V: Visitor<'de>,
 {
-    let len = object.len();
-    let mut deserializer = MapDeserializer::new(object);
-    let map = try!(visitor.visit_map(&mut deserializer));
-    let remaining = deserializer.iter.len();
-    if remaining == 0 {
-        Ok(map)
-    } else {
-        Err(serde::de::Error::invalid_length(
-            len,
-            &"fewer elements in map",
-        ))
-    }
+    unimplemented!()
+//    let len = object.len();
+//    let mut deserializer = MapDeserializer::new(object);
+//    let map = try!(visitor.visit_map(&mut deserializer));
+//    let remaining = deserializer.iter.len();
+//    if remaining == 0 {
+//        Ok(map)
+//    } else {
+//        Err(serde::de::Error::invalid_length(
+//            len,
+//            &"fewer elements in map",
+//        ))
+//    }
 }
 
 
+impl<'de> EDNDeserializer<'de> for Value {
+    type Error = Error;
+
+    fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Self::Error> where
+        V: EDNVisitor<'de> {
+        unimplemented!()
+    }
+
+    fn deserialize_list<V>(self, visitor: V) -> Result<V::Value, Self::Error> where
+        V: EDNVisitor<'de> {
+        unimplemented!()
+    }
+}
 
 impl<'de> serde::Deserializer<'de> for Value {
     type Error = Error;
@@ -532,11 +551,15 @@ impl<'de> serde::Deserializer<'de> for Value {
         where
             V: Visitor<'de>,
     {
+        // todo. move to EDN version when we figure out when this is called
         let (variant, value) = match self {
             Value::Object(value) => {
                 let mut iter = value.into_iter();
                 let (variant, value) = match iter.next() {
-                    Some(v) => v,
+                    Some(v) => match v {
+                        (Value::String(s), a) => (s, a),
+                        _ => unimplemented!()
+                    }
                     None => {
                         return Err(serde::de::Error::invalid_value(
                             Unexpected::Map,
@@ -757,6 +780,72 @@ struct VariantDeserializer {
     value: Option<Value>,
 }
 
+impl<'de> EDNVariantAccess<'de> for VariantDeserializer {
+    type Error = Error;
+
+    fn unit_variant(self) -> Result<(), Error> {
+        match self.value {
+            Some(value) => Deserialize::deserialize(value),
+            None => Ok(()),
+        }
+    }
+
+    fn newtype_variant_seed<T>(self, seed: T) -> Result<T::Value, Error>
+        where
+            T: EDNDeserializeSeed<'de>,
+    {
+        match self.value {
+            Some(value) => seed.deserialize(value),
+            None => Err(serde::de::Error::invalid_type(
+                Unexpected::UnitVariant,
+                &"newtype variant",
+            )),
+        }
+    }
+
+    fn tuple_variant<V>(self, _len: usize, visitor: V) -> Result<V::Value, Error>
+        where
+            V: EDNVisitor<'de>,
+    {
+        match self.value {
+            Some(Value::Vector(v)) => {
+                serde::Deserializer::deserialize_any(SeqDeserializer::new(v), visitor)
+            }
+            Some(other) => Err(serde::de::Error::invalid_type(
+                other.unexpected(),
+                &"tuple variant",
+            )),
+            None => Err(serde::de::Error::invalid_type(
+                Unexpected::UnitVariant,
+                &"tuple variant",
+            )),
+        }
+    }
+
+    fn struct_variant<V>(
+        self,
+        _fields: &'static [&'static str],
+        visitor: V,
+    ) -> Result<V::Value, Error>
+        where
+            V: EDNVisitor<'de>,
+    {
+        match self.value {
+            Some(Value::Object(v)) => {
+                EDNDeserializer::deserialize_any(EDNMapDeserializer::new(v), visitor)
+            }
+            Some(other) => Err(serde::de::Error::invalid_type(
+                other.unexpected(),
+                &"struct variant",
+            )),
+            _ => Err(serde::de::Error::invalid_type(
+                Unexpected::UnitVariant,
+                &"struct variant",
+            )),
+        }
+    }
+}
+
 impl<'de> VariantAccess<'de> for VariantDeserializer {
     type Error = Error;
 
@@ -809,7 +898,8 @@ impl<'de> VariantAccess<'de> for VariantDeserializer {
     {
         match self.value {
             Some(Value::Object(v)) => {
-                serde::Deserializer::deserialize_any(MapDeserializer::new(v), visitor)
+                unimplemented!()
+//                serde::Deserializer::deserialize_any(MapDeserializer::new(v), visitor)
             }
             Some(other) => Err(serde::de::Error::invalid_type(
                 other.unexpected(),
@@ -887,14 +977,25 @@ impl<'de> SeqAccess<'de> for SeqDeserializer {
         }
     }
 }
-
+struct EDNMapDeserializer {
+    iter: <Map<Value, Value> as IntoIterator>::IntoIter,
+    value: Option<Value>,
+}
+impl EDNMapDeserializer {
+    fn new(map: Map<Value, Value>) -> Self {
+        Self {
+            iter: map.into_iter(),
+            value: None,
+        }
+    }
+}
 struct MapDeserializer {
-    iter: <Map<String, Value> as IntoIterator>::IntoIter,
+    iter: <MapInternal<String, Value> as IntoIterator>::IntoIter,
     value: Option<Value>,
 }
 
 impl MapDeserializer {
-    fn new(map: Map<String, Value>) -> Self {
+    fn new(map: MapInternal<String, Value>) -> Self {
         MapDeserializer {
             iter: map.into_iter(),
             value: None,
@@ -902,6 +1003,19 @@ impl MapDeserializer {
     }
 }
 
+impl<'de> EDNMapAccess<'de> for EDNMapDeserializer {
+    type Error = Error;
+
+    fn next_key_seed<K>(&mut self, seed: K) -> Result<Option<K::Value>, Self::Error> where
+        K: EDNDeserializeSeed<'de> {
+        unimplemented!()
+    }
+
+    fn next_value_seed<V>(&mut self, seed: V) -> Result<V::Value, Self::Error> where
+        V: EDNDeserializeSeed<'de> {
+        unimplemented!()
+    }
+}
 impl<'de> MapAccess<'de> for MapDeserializer {
     type Error = Error;
 
@@ -936,6 +1050,30 @@ impl<'de> MapAccess<'de> for MapDeserializer {
             (lower, Some(upper)) if lower == upper => Some(upper),
             _ => None,
         }
+    }
+}
+
+impl<'de> EDNDeserializer<'de> for EDNMapDeserializer {
+    type Error = Error;
+
+    #[inline]
+    fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Error>
+        where
+            V: EDNVisitor<'de>,
+    {
+        EDNVisitor::visit_map(visitor,self)
+//        visitor.visit_map(self)
+    }
+
+//    forward_to_deserialize_any! {
+//        bool i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 f32 f64 char str string
+//        bytes byte_buf option unit unit_struct newtype_struct seq tuple
+//        tuple_struct map struct enum identifier ignored_any
+//    }
+
+    fn deserialize_list<V>(self, visitor: V) -> Result<V::Value, Self::Error> where
+        V: EDNVisitor<'de> {
+        unimplemented!()
     }
 }
 
@@ -1039,7 +1177,7 @@ fn visit_set_ref<'de, V>(vector: &'de [Value], visitor: V) -> Result<V::Value, E
     }
 }
 
-fn visit_object_ref<'de, V>(object: &'de Map<String, Value>, visitor: V) -> Result<V::Value, Error>
+fn visit_object_ref<'de, V>(object: &'de Map<Value, Value>, visitor: V) -> Result<V::Value, Error>
     where
         V: Visitor<'de>,
 {
@@ -1135,40 +1273,41 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
         where
             V: Visitor<'de>,
     {
-        let (variant, value) = match *self {
-            Value::Object(ref value) => {
-                let mut iter = value.into_iter();
-                let (variant, value) = match iter.next() {
-                    Some(v) => v,
-                    None => {
-                        return Err(serde::de::Error::invalid_value(
-                            Unexpected::Map,
-                            &"map with a single key",
-                        ));
-                    }
-                };
-                // enums are encoded in edn as maps with a single key:value pair
-                if iter.next().is_some() {
-                    return Err(serde::de::Error::invalid_value(
-                        Unexpected::Map,
-                        &"map with a single key",
-                    ));
-                }
-                (variant, Some(value))
-            }
-            Value::String(ref variant) => (variant, None),
-            ref other => {
-                return Err(serde::de::Error::invalid_type(
-                    other.unexpected(),
-                    &"string or map",
-                ));
-            }
-        };
-
-        visitor.visit_enum(EnumRefDeserializer {
-            variant: variant,
-            value: value,
-        })
+        unimplemented!()
+//        let (variant, value) = match *self {
+//            Value::Object(ref value) => {
+//                let mut iter = value.into_iter();
+//                let (variant, value) = match iter.next() {
+//                    Some(v) => v,
+//                    None => {
+//                        return Err(serde::de::Error::invalid_value(
+//                            Unexpected::Map,
+//                            &"map with a single key",
+//                        ));
+//                    }
+//                };
+//                // enums are encoded in edn as maps with a single key:value pair
+//                if iter.next().is_some() {
+//                    return Err(serde::de::Error::invalid_value(
+//                        Unexpected::Map,
+//                        &"map with a single key",
+//                    ));
+//                }
+//                (variant, Some(value))
+//            }
+//            Value::String(ref variant) => (variant, None),
+//            ref other => {
+//                return Err(serde::de::Error::invalid_type(
+//                    other.unexpected(),
+//                    &"string or map",
+//                ));
+//            }
+//        };
+//
+//        visitor.visit_enum(EnumRefDeserializer {
+//            variant: variant,
+//            value: value,
+//        })
     }
 
     #[inline]
@@ -1489,15 +1628,53 @@ impl<'de> SeqAccess<'de> for SeqRefDeserializer<'de> {
 }
 
 struct MapRefDeserializer<'de> {
-    iter: <&'de Map<String, Value> as IntoIterator>::IntoIter,
+    iter: <&'de Map<Value, Value> as IntoIterator>::IntoIter,
     value: Option<&'de Value>,
 }
 
 impl<'de> MapRefDeserializer<'de> {
-    fn new(map: &'de Map<String, Value>) -> Self {
+    fn new(map: &'de Map<Value, Value>) -> Self {
         MapRefDeserializer {
             iter: map.into_iter(),
             value: None,
+        }
+    }
+}
+impl<'de> EDNMapAccess<'de> for MapRefDeserializer<'de> {
+    type Error = Error;
+
+    fn next_key_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>, Error>
+        where
+            T: EDNDeserializeSeed<'de>,
+    {
+        unimplemented!()
+//        match self.iter.next() {
+//            Some((key, value)) => {
+//                self.value = Some(value);
+//                let key_de = EDNMapKeyDeserializer {
+//                    key: Cow::Borrowed(&**key),
+//                };
+//                seed.deserialize(key_de).map(Some)
+//            }
+//            None => Ok(None),
+//        }
+    }
+
+    fn next_value_seed<T>(&mut self, seed: T) -> Result<T::Value, Error>
+        where
+            T: EDNDeserializeSeed<'de>,
+    {
+        unimplemented!()
+//        match self.value.take() {
+//            Some(value) => seed.deserialize(value),
+//            None => Err(serde::de::Error::custom("value is missing")),
+//        }
+    }
+
+    fn size_hint(&self) -> Option<usize> {
+        match self.iter.size_hint() {
+            (lower, Some(upper)) if lower == upper => Some(upper),
+            _ => None,
         }
     }
 }
@@ -1509,16 +1686,17 @@ impl<'de> MapAccess<'de> for MapRefDeserializer<'de> {
         where
             T: DeserializeSeed<'de>,
     {
-        match self.iter.next() {
-            Some((key, value)) => {
-                self.value = Some(value);
-                let key_de = MapKeyDeserializer {
-                    key: Cow::Borrowed(&**key),
-                };
-                seed.deserialize(key_de).map(Some)
-            }
-            None => Ok(None),
-        }
+        unimplemented!()
+//        match self.iter.next() {
+//            Some((key, value)) => {
+//                self.value = Some(value);
+//                let key_de = MapKeyDeserializer {
+//                    key: Cow::Borrowed(&**key),
+//                };
+//                seed.deserialize(key_de).map(Some)
+//            }
+//            None => Ok(None),
+//        }
     }
 
     fn next_value_seed<T>(&mut self, seed: T) -> Result<T::Value, Error>
@@ -1556,7 +1734,9 @@ impl<'de> serde::Deserializer<'de> for MapRefDeserializer<'de> {
         tuple_struct map struct enum identifier ignored_any
     }
 }
-
+struct EDNMapKeyDeserializer<'de> {
+    key: Cow<'de, Value>,
+}
 struct MapKeyDeserializer<'de> {
     key: Cow<'de, str>,
 }
@@ -1644,7 +1824,7 @@ impl<'de> serde::Deserializer<'de> for MapKeyDeserializer<'de> {
 struct KeyClassifier;
 
 enum KeyClass {
-    Map(String),
+    Map(Value),
     #[cfg(feature = "arbitrary_precision")]
     Number,
     #[cfg(feature = "raw_value")]
@@ -1664,6 +1844,7 @@ impl<'de> DeserializeSeed<'de> for KeyClassifier {
     }
 }
 
+// for internal hackitude that doesn't fit in serde data model
 impl<'de> Visitor<'de> for KeyClassifier {
     type Value = KeyClass;
 
@@ -1682,7 +1863,7 @@ impl<'de> Visitor<'de> for KeyClassifier {
             ::number::TOKEN => Ok(KeyClass::Number),
             #[cfg(feature = "raw_value")]
             ::raw::TOKEN => Ok(KeyClass::RawValue),
-            _ => Ok(KeyClass::Map(s.to_owned())),
+            _ => unreachable!()//Ok(KeyClass::Map(s.to_owned())),
         }
     }
 
@@ -1697,7 +1878,8 @@ impl<'de> Visitor<'de> for KeyClassifier {
             ::number::TOKEN => Ok(KeyClass::Number),
             #[cfg(feature = "raw_value")]
             ::raw::TOKEN => Ok(KeyClass::RawValue),
-            _ => Ok(KeyClass::Map(s)),
+//            _ => Ok(KeyClass::Map(s)),
+            _ => unreachable!()
         }
     }
 }

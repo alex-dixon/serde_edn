@@ -353,7 +353,7 @@ where
 
     #[inline]
     fn serialize_bytes(self, value: &[u8]) -> Result<()> {
-        use serde::ser::SerializeSeq;
+//        use serde::ser::SerializeSeq;
         let mut seq = try!(self.serialize_seq(Some(value.len())));
         for byte in value {
             try!(ser::SerializeSeq::serialize_element(&mut seq,byte));
