@@ -484,7 +484,7 @@ where
 
                     // not a reserved word but matches the reserved word sequence
                     // up until offset
-                    *offset += 1;
+//                    *offset += 1;
                     scratch.extend_from_slice(&reserved_bytes[0..*offset]);
                     scratch.extend_from_slice(&[v]);
                     break Ok(ParseDecision::Symbol);
@@ -646,7 +646,7 @@ impl<'a> SliceRead<'a> {
                         // copying.
                         let borrowed = &self.slice[start..self.index];
 //                        self.index += 1;
-                        println!("got {:?}",borrowed);
+//                        println!("got at seq term {:?}",borrowed);
                         return result(self, borrowed).map(Reference::Borrowed);
                     } else {
                         //  todo. expect scratch to be empty always because we don't deal with escape sequences,
@@ -660,7 +660,7 @@ impl<'a> SliceRead<'a> {
                         // Fast path: return a slice of the raw edn without any
                         // copying.
                         let borrowed = &self.slice[start..self.index];
-                        println!("got {:?}",borrowed);
+//                        println!("got at whitespace {:?}",borrowed);
                         self.index += 1;
                         return result(self, borrowed).map(Reference::Borrowed);
                     } else {

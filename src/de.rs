@@ -11,7 +11,7 @@
 use std::io;
 use std::marker::PhantomData;
 use std::result;
-use std::str::{FromStr};
+use std::str::FromStr;
 use std::{i32, u64};
 
 use serde::de::{self, Expected, Unexpected, Visitor};
@@ -25,7 +25,7 @@ pub use read::{IoRead, Read, SliceRead, StrRead};
 use number::Number;
 #[cfg(feature = "arbitrary_precision")]
 use number::NumberDeserializer;
-use keyword::{KeywordDeserializer};
+use keyword::KeywordDeserializer;
 use symbol::SymbolDeserializer;
 use edn_de::{EDNDeserialize, EDNDeserializer, EDNVisitor, EDNDeserializeOwned, EDNDeserializeSeed, EDNSeqAccess, EDNMapAccess};
 use serde::Deserialize;
@@ -764,13 +764,6 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                 self.eat_char();
                 Ok(())
             }
-            Some(b',') => {
-                self.eat_char();
-                match self.parse_whitespace() {
-                    Ok(Some(b']')) => Err(self.peek_error(ErrorCode::TrailingComma)),
-                    _ => Err(self.peek_error(ErrorCode::TrailingCharacters)),
-                }
-            }
             Some(_) => Err(self.peek_error(ErrorCode::TrailingCharacters)),
             None => Err(self.peek_error(ErrorCode::EofWhileParsingList)),
         }
@@ -781,13 +774,6 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             Some(b'}') => {
                 self.eat_char();
                 Ok(())
-            }
-            Some(b',') => {
-                self.eat_char();
-                match self.parse_whitespace() {
-                    Ok(Some(b'}')) => Err(self.peek_error(ErrorCode::TrailingComma)),
-                    _ => Err(self.peek_error(ErrorCode::TrailingCharacters)),
-                }
             }
             Some(_) => Err(self.peek_error(ErrorCode::TrailingCharacters)),
             None => Err(self.peek_error(ErrorCode::EofWhileParsingList)),
@@ -800,7 +786,6 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                 self.eat_char();
                 Ok(())
             }
-            Some(b',') => Err(self.peek_error(ErrorCode::TrailingComma)),
             Some(_) => Err(self.peek_error(ErrorCode::TrailingCharacters)),
             None => Err(self.peek_error(ErrorCode::EofWhileParsingObject)),
         }
@@ -1048,6 +1033,10 @@ pub enum ParseDecision {
 }
 
 
+// this is slower when  passed as argument directly... :/
+//static NIL_SLICE: [u8; 5] = [b'n', b'i', b'l', 0, 0];
+//static TRUE_SLICE: [u8; 5] = [b't', b'r', b'u', b'e', 0];
+//static FALSE_SLICE: [u8; 5] = [b'f', b'a', b'l', b's', b'e'];
 impl<'de, 'a, R: Read<'de>> EDNDeserializer<'de> for &'a mut Deserializer<R> {
     type Error = Error;
 
@@ -1074,15 +1063,11 @@ impl<'de, 'a, R: Read<'de>> EDNDeserializer<'de> for &'a mut Deserializer<R> {
                     reserved_len,
                     &reserved,
                 )) {
-                    ParseDecision::Reserved => visitor.visit_unit(),
+                    ParseDecision::Reserved => serde::de::Visitor::visit_unit(visitor),
                     ParseDecision::Symbol => {
                         match try!(self.read.parse_symbol_offset(&mut self.scratch, offset)) {
-                            Reference::Borrowed(s) => {
-                                serde::de::Visitor::visit_map(visitor, SymbolDeserializer {
-                                    value: s
-                                })
-                            }
-                            Reference::Copied(_) => unreachable!()
+                            Reference::Borrowed(s) => EDNVisitor::visit_borrowed_symbol(visitor, s),
+                            Reference::Copied(s) => EDNVisitor::visit_symbol(visitor, s)
                         }
                     }
                 }
@@ -1099,14 +1084,10 @@ impl<'de, 'a, R: Read<'de>> EDNDeserializer<'de> for &'a mut Deserializer<R> {
                     reserved_len,
                     &reserved,
                 )) {
-                    ParseDecision::Reserved => visitor.visit_bool(true),
+                    ParseDecision::Reserved => serde::de::Visitor::visit_bool(visitor, true),
                     ParseDecision::Symbol => match try!(self.read.parse_symbol_offset(&mut self.scratch, offset)) {
-                        Reference::Borrowed(s) => {
-                            serde::de::Visitor::visit_map(visitor, SymbolDeserializer {
-                                value: s
-                            })
-                        }
-                        Reference::Copied(_) => unreachable!()
+                        Reference::Borrowed(s) => EDNVisitor::visit_borrowed_symbol(visitor, s),
+                        Reference::Copied(s) => EDNVisitor::visit_symbol(visitor, s)
                     }
                 }
             }
@@ -1122,14 +1103,10 @@ impl<'de, 'a, R: Read<'de>> EDNDeserializer<'de> for &'a mut Deserializer<R> {
                     reserved_len,
                     &reserved,
                 )) {
-                    ParseDecision::Reserved => visitor.visit_bool(false),
+                    ParseDecision::Reserved => serde::de::Visitor::visit_bool(visitor, false),
                     ParseDecision::Symbol => match try!(self.read.parse_symbol_offset(&mut self.scratch, offset)) {
-                        Reference::Borrowed(s) => {
-                            serde::de::Visitor::visit_map(visitor, SymbolDeserializer {
-                                value: s
-                            })
-                        }
-                        Reference::Copied(_) => unreachable!()
+                        Reference::Borrowed(s) => EDNVisitor::visit_borrowed_symbol(visitor, s),
+                        Reference::Copied(s) => EDNVisitor::visit_symbol(visitor, s)
                     }
                 }
             }
@@ -1141,17 +1118,8 @@ impl<'de, 'a, R: Read<'de>> EDNDeserializer<'de> for &'a mut Deserializer<R> {
                 self.eat_char();
                 self.scratch.clear();
                 match try!(self.read.parse_keyword(&mut self.scratch)) {
-                    Reference::Borrowed(s) => {
-                        serde::de::Visitor::visit_map(visitor, KeywordDeserializer {
-                            value: s
-                        })
-                    }
-                    Reference::Copied(s) => {
-                        // Keywords are always Reference::Borrowed because no escape sequence
-                        // to deal with as was the case with strings
-//                        unreachable!()
-                        visitor.visit_keyword(s)
-                    }
+                    Reference::Borrowed(s) => EDNVisitor::visit_borrowed_keyword(visitor, s),
+                    Reference::Copied(s) => EDNVisitor::visit_keyword(visitor, s)
                 }
             }
             b'0'...b'9' => try!(self.parse_any_number(true)).visit(visitor),
@@ -1159,8 +1127,8 @@ impl<'de, 'a, R: Read<'de>> EDNDeserializer<'de> for &'a mut Deserializer<R> {
                 self.eat_char();
                 self.scratch.clear();
                 match try!(self.read.parse_str(&mut self.scratch)) {
-                    Reference::Borrowed(s) => visitor.visit_borrowed_str(s),
-                    Reference::Copied(s) => visitor.visit_str(s),
+                    Reference::Borrowed(s) => serde::de::Visitor::visit_borrowed_str(visitor, s),
+                    Reference::Copied(s) => serde::de::Visitor::visit_str(visitor, s)
                 }
             }
             b'[' => {
@@ -1170,7 +1138,7 @@ impl<'de, 'a, R: Read<'de>> EDNDeserializer<'de> for &'a mut Deserializer<R> {
                 }
 
                 self.eat_char();
-                let ret = visitor.visit_vector(SeqAccess::new(self));
+                let ret = EDNVisitor::visit_vector(visitor, SeqAccess::new(self));
 
                 self.remaining_depth += 1;
 
@@ -1271,7 +1239,7 @@ impl<'de, 'a, R: Read<'de>> EDNDeserializer<'de> for &'a mut Deserializer<R> {
                                     Ok(_) => visitor.visit_char('\n')
                                 }
                             // eof
-                            None =>  visitor.visit_char('n')
+                            None => visitor.visit_char('n')
                         }
                     }
                     Some(b'r') => {
@@ -1285,7 +1253,7 @@ impl<'de, 'a, R: Read<'de>> EDNDeserializer<'de> for &'a mut Deserializer<R> {
                                     Ok(_) => visitor.visit_char('\r')
                                 }
                             // eof
-                            None =>  visitor.visit_char('r')
+                            None => visitor.visit_char('r')
                         }
                     }
                     Some(b's') => {
@@ -1299,7 +1267,7 @@ impl<'de, 'a, R: Read<'de>> EDNDeserializer<'de> for &'a mut Deserializer<R> {
                                     Ok(_) => visitor.visit_char(' ')
                                 }
                             // eof
-                            None =>  visitor.visit_char('s')
+                            None => visitor.visit_char('s')
                         }
                     }
                     Some(b't') => {
@@ -1323,9 +1291,8 @@ impl<'de, 'a, R: Read<'de>> EDNDeserializer<'de> for &'a mut Deserializer<R> {
                             // exclusive range pattern syntax is experimental (see issue #37854)
                             // though it's used elsewhere...?
                             b'a'..=b'm' | b'o'..=b'r' | b'u'..=b'z' => visitor.visit_char(c as char),
-                            _ =>unimplemented!()
+                            _ => unimplemented!()
                         }
-
                     }
                     None => return Err(self.peek_error(ErrorCode::EOFWhileReadingCharacter))
                 }
@@ -1349,14 +1316,8 @@ impl<'de, 'a, R: Read<'de>> EDNDeserializer<'de> for &'a mut Deserializer<R> {
             c => {
                 self.scratch.clear();
                 match try!(self.read.parse_symbol(&mut self.scratch)) {
-                    Reference::Borrowed(s) => {
-                        serde::de::Visitor::visit_map(visitor, SymbolDeserializer {
-                            value: s
-                        })
-                    }
-                    Reference::Copied(s) => {
-                        visitor.visit_symbol(s)
-                    }
+                    Reference::Borrowed(s) => EDNVisitor::visit_borrowed_symbol(visitor, s),
+                    Reference::Copied(s) => EDNVisitor::visit_symbol(visitor, s)
                 }
             }
             _ => Err(self.peek_error(ErrorCode::ExpectedSomeValue)),
@@ -1557,7 +1518,6 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
 //                }
             }
             b'{' => {
-
                 unreachable!("serde::Deserializer::deserialize_any");
 //                self.remaining_depth -= 1;
 //                if self.remaining_depth == 0 {
@@ -2174,9 +2134,7 @@ impl<'de, 'a, R: Read<'de> + 'a> EDNSeqAccess<'de> for SeqAccess<'a, R> {
         };
 
         match peek {
-//            Some(b']') => Err(self.de.peek_error(ErrorCode::TrailingComma)),
-//            Some(_) => Ok(Some(try!(seed.deserialize(&mut *self.de)))),
-            Some(_) => Ok(Some(try!(seed.deserialize(&mut *self.de)))),
+            Some(_) => Ok(Some(try!(EDNDeserializeSeed::deserialize(seed, &mut *self.de)))),
             None => Err(self.de.peek_error(ErrorCode::EofWhileParsingValue)),
         }
     }
@@ -2199,7 +2157,7 @@ impl<'de, 'a, R: Read<'de> + 'a> EDNSeqAccess<'de> for ListAccess<'a, R> {
 
     fn next_element_seed<T>(&mut self, seed: T) -> Result<Option<<T as EDNDeserializeSeed<'de>>::Value>>
         where
-            T: EDNDeserializeSeed<'de> //de::DeserializeSeed<'de>,
+            T: EDNDeserializeSeed<'de>
     {
         let peek = match try!(self.de.parse_whitespace()) {
             Some(b')') => {
@@ -2235,7 +2193,7 @@ impl<'de, 'a, R: Read<'de> + 'a> EDNSeqAccess<'de> for SetAccess<'a, R> {
 
     fn next_element_seed<T>(&mut self, seed: T) -> Result<Option<<T as EDNDeserializeSeed<'de>>::Value>>
         where
-            T: EDNDeserializeSeed<'de> //de::DeserializeSeed<'de>,
+            T: EDNDeserializeSeed<'de>
     {
         let peek = match try!(self.de.parse_whitespace()) {
             Some(b'}') => {
@@ -2286,7 +2244,7 @@ impl<'de, 'a, R: Read<'de> + 'a> EDNMapAccess<'de> for MapAccess<'a, R> {
         };
 
         match peek {
-            Some(_) => seed.deserialize( &mut *self.de ).map(Some),
+            Some(_) => EDNDeserializeSeed::deserialize(seed, &mut *self.de).map(Some),
             None => Err(self.de.peek_error(ErrorCode::EofWhileParsingValue)),
         }
     }
@@ -2297,7 +2255,7 @@ impl<'de, 'a, R: Read<'de> + 'a> EDNMapAccess<'de> for MapAccess<'a, R> {
     {
         try!(self.de.parse_object_colon());
 
-        seed.deserialize(&mut *self.de)
+        EDNDeserializeSeed::deserialize(seed, &mut *self.de)
     }
 }
 

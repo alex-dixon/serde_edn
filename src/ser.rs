@@ -338,7 +338,8 @@ where
             c => {
                 let mut buf = [0; 4];
                 let s = c.encode_utf8(&mut buf);
-                self.formatter.write_bytes(&mut self.writer, &[b'\\']);
+                self.formatter.write_bytes(&mut self.writer, &[b'\\'])
+                    .map_err(Error::io);
                 self.formatter.write_bytes(&mut self.writer, s.as_bytes())
                     .map_err(Error::io)
             }

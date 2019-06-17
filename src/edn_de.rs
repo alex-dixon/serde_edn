@@ -1,4 +1,4 @@
-use serde::de::{SeqAccess,  Visitor};
+use serde::de::{SeqAccess, Visitor};
 use serde::export::PhantomData;
 
 pub trait EDNVisitor<'de>: Sized + Visitor<'de> {
@@ -31,12 +31,15 @@ pub trait EDNVisitor<'de>: Sized + Visitor<'de> {
     }
 
     // note: not borrowed so lifetime implicitly 'a (not 'de)
-    fn visit_symbol<E>(self,s:&str) -> Result<<Self as Visitor<'de>>::Value,E>;
+    fn visit_symbol<E>(self, s: &str) -> Result<<Self as Visitor<'de>>::Value, E>;
 
-    fn  visit_keyword<E>(self,s:&str) -> Result<<Self as Visitor<'de>>::Value, E>
-    where E:serde::de::Error{
-        unimplemented!()
-    }
+    fn visit_borrowed_symbol<E>(self, s: &'de str) -> Result<<Self as Visitor<'de>>::Value, E>;
+
+    fn visit_keyword<E>(self, s: &str) -> Result<<Self as Visitor<'de>>::Value, E>
+        where E: serde::de::Error;
+
+    fn visit_borrowed_keyword<E>(self, s: &'de str) -> Result<<Self as Visitor<'de>>::Value, E>
+        where E: serde::de::Error;
 
     fn visit_map<A>(self, map: A) -> Result<Self::Value, A::Error>
         where
@@ -64,39 +67,37 @@ pub trait EDNDeserialize<'de>: Sized {
     #[inline]
     fn deserialize<D>(deserializer: D) -> Result<Self, <D as EDNDeserializer<'de>>::Error>
         where
-            D: EDNDeserializer<'de>;// + serde::Deserializer<'de>;
+            D: EDNDeserializer<'de>;
 }
 
 pub trait EDNDeserializeOwned: for<'de> EDNDeserialize<'de> {}
 
 impl<T> EDNDeserializeOwned for T where T: for<'de> EDNDeserialize<'de> {}
 
-pub trait EDNDeserializeSeed<'de>: Sized //+ serde::de::DeserializeSeed<'de>
+pub trait EDNDeserializeSeed<'de>: Sized
 {
     type Value;
 
     fn deserialize<D>(self, deserializer: D) -> Result<<Self as EDNDeserializeSeed<'de>>::Value, <D as EDNDeserializer<'de>>::Error>
         where
-            D: EDNDeserializer<'de>; //+ serde::Deserializer<'de>;
+            D: EDNDeserializer<'de>;
 }
 
 impl<'de, T> EDNDeserializeSeed<'de> for PhantomData<T>
     where
-        T: EDNDeserialize<'de>, //+ serde::Deserialize<'de>,
+        T: EDNDeserialize<'de>,
 {
     type Value = T;
 
     #[inline]
     fn deserialize<D>(self, deserializer: D) -> Result<T, <D as EDNDeserializer<'de>>::Error>
         where D: EDNDeserializer<'de>,
-    //+ serde::Deserializer<'de>,
     {
         EDNDeserialize::deserialize(deserializer)
     }
 }
 
 pub trait EDNSeqAccess<'de> {
-    //    type Error: Error;
     type Error;
 
     fn next_element_seed<T>(&mut self, seed: T) -> Result<Option<<T as EDNDeserializeSeed<'de>>::Value>, Self::Error>

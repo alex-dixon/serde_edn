@@ -22,7 +22,6 @@ use error::Error;
 use map::{MapInternal, Map};
 use number::Number;
 use value::Value;
-use super::super::de::from_str;
 
 use serde::de;
 
@@ -31,7 +30,6 @@ use number::NumberFromString;
 use keyword::KeywordFromString;
 use symbol::{SymbolFromString, Symbol};
 use edn_de::{EDNDeserialize, EDNDeserializer, EDNVisitor, EDNSeqAccess, EDNMapAccess, EDNDeserializeSeed, EDNVariantAccess};
-use std::str::FromStr;
 
 
 // note: This is serde's Deserialize!
@@ -244,6 +242,16 @@ impl<'de> EDNDeserialize<'de> for Value {
                         Ok(Value::Object(values))
                     }
                 }
+            }
+            #[inline]
+            fn visit_borrowed_symbol<E>(self, v: &'de str) -> Result<Self::Value, E> {
+                self.visit_symbol(v)
+            }
+
+            #[inline]
+            fn visit_borrowed_keyword<E>(self, v: &'de str) -> Result<Value, E>
+                where E: serde::de::Error {
+                self.visit_keyword(v)
             }
         }
 

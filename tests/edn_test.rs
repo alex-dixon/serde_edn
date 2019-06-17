@@ -248,7 +248,12 @@ fn parse_map() {
     assert_eq!(
         Value::from_str(r#"{(1 2 3) 1}"#).unwrap(),
         map!(Value::List(vec![number("1"),number("2"),number("3")])=>number("1"))
-    )
+    );
+
+    assert_eq!(
+        map!(map!(keyword("a")=>number("1"))=> symbol("foo")),
+        read(r#"{{:a 1} foo}"#)
+    );
 
 
 }
@@ -349,6 +354,9 @@ fn serialize_set() {
     );
 }
 
+fn read(s: &str) -> Value {
+    from_reader(s.as_bytes().as_ref()).unwrap()
+}
 
 #[test]
 fn deserialize_reserved_vs_symbol() {
@@ -358,6 +366,13 @@ fn deserialize_reserved_vs_symbol() {
     assert_eq!(Value::Bool(true), Value::from_str("true").unwrap());
     assert_eq!(symbol("trub"), Value::from_str("trub").unwrap());
     assert_eq!(symbol("trued"), Value::from_str("trued").unwrap());
+
+    assert_eq!(symbol("t"), read("t"));
+    assert_eq!(symbol("tr"), read("tr"));
+    assert_eq!(symbol("tru"), read("tru"));
+    assert_eq!(Value::Bool(true), read("true"));
+    assert_eq!(symbol("trub"), read("trub"));
+    assert_eq!(symbol("trued"), read("trued"));
 }
 
 #[test]
