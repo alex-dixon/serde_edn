@@ -83,7 +83,6 @@ impl<'a, W, F> EDNSerializer for &'a mut Serializer<W, F>
 
     #[inline]
     fn serialize_list(self, len: Option<usize>) -> Result<Self::SerializeL> {
-        println!("ser list");
         if len == Some(0) {
             try!(self
                 .formatter
@@ -110,7 +109,6 @@ impl<'a, W, F> EDNSerializer for &'a mut Serializer<W, F>
     }
 
     fn serialize_vector(self, len: Option<usize>) -> Result<Self::SerializeV> {
-        println!("ser vector");
         if len == Some(0) {
             try!(self
                 .formatter
@@ -451,7 +449,6 @@ where
 
     #[inline]
     fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq> {
-        println!("ser/serialize_seq");
 //        unreachable!();
         if len == Some(0) {
             try!(self
@@ -2430,6 +2427,7 @@ pub trait Formatter {
     {
         writer.write_all(value.as_bytes())
     }
+
     #[inline]
     fn write_keyword_str<W: ?Sized>(&mut self, writer: &mut W, value: &str) -> io::Result<()>
         where
@@ -2439,13 +2437,12 @@ pub trait Formatter {
 //        writer.write_all(&[b':']);
         writer.write_all(value.as_bytes())
     }
+
     #[inline]
     fn write_symbol_str<W: ?Sized>(&mut self, writer: &mut W, value: &str) -> io::Result<()>
         where
             W: io::Write,
     {
-        // Display for Keyword adds colon
-//        writer.write_all(&[b':']);
         writer.write_all(value.as_bytes())
     }
 

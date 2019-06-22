@@ -19,20 +19,20 @@ impl EDNSerialize for Value {
     #[inline]
     fn serialize<S>(&self, serializer: S) -> Result<<S as serde::Serializer>::Ok, <S as serde::Serializer>::Error>
     where
-        S: EDNSerializer //+ serde::Serializer,
+        S: EDNSerializer
     {
         match *self {
-            Value::Nil => serializer.serialize_unit(),
-            Value::Bool(b) => serializer.serialize_bool(b),
-            Value::Char(c) => serializer.serialize_char(c),
+            Value::Nil => serde::ser::Serializer::serialize_unit(serializer),
+            Value::Bool(b) => serde::ser::Serializer::serialize_bool(serializer,b),
+            Value::Char(c) => serde::ser::Serializer::serialize_char(serializer,c),
             Value::Number(ref n) => n.serialize(serializer),
-            Value::String(ref s) => serializer.serialize_str(s),
+            Value::String(ref s) => serde::ser::Serializer::serialize_str(serializer,s),
             Value::Vector(ref v) => {
 //                v.serialize(serializer)
 //                println!("EDNSerialize for Value,  ser list ref");
                 use edn_ser::SerializeVector;
                 let v2 = v.into_iter();
-                let mut s = try!(serializer.serialize_vector(Some(v.len())));
+                let mut s = try!(EDNSerializer::serialize_vector(serializer,Some(v.len())));
                 for x in v2 {
                     try!(s.serialize_element(x))
                 }
@@ -40,7 +40,7 @@ impl EDNSerialize for Value {
             },
             Value::List(ref v) => {
 //                v.serialize(ListSerializer{l: Vec::with_capacity()})
-                println!("EDNSerialize for Value,  ser list ref");
+//                println!("EDNSerialize for Value,  ser list ref");
                 use edn_ser::SerializeList;
                 let v2 = v.into_iter();
                 let mut s = try!(serializer.serialize_list(Some(v.len())));
@@ -51,7 +51,7 @@ impl EDNSerialize for Value {
             },
             Value::Set(ref v) => {
 //                v.serialize(ListSerializer{l: Vec::with_capacity()})
-                println!("EDNSerialize for Value,  ser list ref");
+//                println!("EDNSerialize for Value,  ser list ref");
                 use edn_ser::SerializeList;
                 let v2 = v.into_iter();
                 let mut s = try!(serializer.serialize_set(Some(v.len())));
@@ -440,7 +440,6 @@ impl serde::Serializer for Serializer {
     }
 
     fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq, Error> {
-        println!("value ser serialize_seq");
         Ok(SerializeVec {
             vec: Vec::with_capacity(len.unwrap_or(0)),
         })
