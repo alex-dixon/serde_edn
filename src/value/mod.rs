@@ -116,7 +116,6 @@ use serde::de::DeserializeOwned;
 use serde::ser::Serialize;
 
 use error::Error;
-pub use map::MapInternal;
 pub use number::Number;
 
 #[cfg(feature = "raw_value")]

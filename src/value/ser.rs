@@ -14,6 +14,8 @@ use map::{ Map};
 use number::Number;
 use value::{to_value, Value};
 use edn_ser::{EDNSerializer, EDNSerialize, SerializeList, SerializeVector, SerializeSet};
+use ::{Keyword, edn_ser};
+use symbol::Symbol;
 
 impl EDNSerialize for Value {
     #[inline]
@@ -25,195 +27,49 @@ impl EDNSerialize for Value {
             Value::Nil => serde::ser::Serializer::serialize_unit(serializer),
             Value::Bool(b) => serde::ser::Serializer::serialize_bool(serializer,b),
             Value::Char(c) => serde::ser::Serializer::serialize_char(serializer,c),
-            Value::Number(ref n) => n.serialize(serializer),
+            Value::Number(ref n) => serde::ser::Serialize::serialize(n,serializer),
             Value::String(ref s) => serde::ser::Serializer::serialize_str(serializer,s),
             Value::Vector(ref v) => {
-//                v.serialize(serializer)
-//                println!("EDNSerialize for Value,  ser list ref");
                 use edn_ser::SerializeVector;
                 let v2 = v.into_iter();
                 let mut s = try!(EDNSerializer::serialize_vector(serializer,Some(v.len())));
                 for x in v2 {
-                    try!(s.serialize_element(x))
+                    try!(edn_ser::SerializeVector::serialize_element(&mut s,x))
                 }
                 s.end()
             },
             Value::List(ref v) => {
-//                v.serialize(ListSerializer{l: Vec::with_capacity()})
-//                println!("EDNSerialize for Value,  ser list ref");
                 use edn_ser::SerializeList;
                 let v2 = v.into_iter();
-                let mut s = try!(serializer.serialize_list(Some(v.len())));
+                let mut s = try!(EDNSerializer::serialize_list(serializer,Some(v.len())));
                 for x in v2 {
                     try!(s.serialize_element(x))
                 }
                 s.end()
             },
             Value::Set(ref v) => {
-//                v.serialize(ListSerializer{l: Vec::with_capacity()})
-//                println!("EDNSerialize for Value,  ser list ref");
-                use edn_ser::SerializeList;
+                use edn_ser::SerializeSet;
                 let v2 = v.into_iter();
-                let mut s = try!(serializer.serialize_set(Some(v.len())));
+                let mut s = try!(EDNSerializer::serialize_set(serializer,Some(v.len())));
                 for x in v2 {
                     try!(s.serialize_element(x))
                 }
                 s.end()
             }
             Value::Object(ref m) => {
-                use serde::ser::SerializeMap;
-                let mut map = try!(serializer.serialize_map(Some(m.len())));
+                use edn_ser::SerializeMap;
+                let mut map = try!(EDNSerializer::serialize_map(serializer, Some(m.len())));
                 for (k, v) in m {
-                    try!(map.serialize_key(k));
-                    try!(map.serialize_value(v));
+                    try!(edn_ser::SerializeMap::serialize_key(&mut map,k));
+                    try!(edn_ser::SerializeMap::serialize_value(&mut map,v));
                 }
                 map.end()
             }
-            Value::Keyword(ref kw) => kw.serialize(serializer),
-            Value::Symbol(ref sym) => sym.serialize(serializer)
+            Value::Keyword(ref kw) => EDNSerializer::serialize_keyword(serializer,kw),
+            Value::Symbol(ref sym) => EDNSerializer::serialize_symbol(serializer,sym)
         }
     }
 }
-
-//struct ListSerialize {x: Vec<Value>}
-//struct ListSerializer;
-//impl serde::Serialize for  ListSerialize {
-//    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where
-//        S: serde::Serializer {
-////        serializer.serialize_seq()
-//    }
-//}
-//impl serde::Serializer for ListSerializer {
-//    type Ok = Value;
-//    type Error = Error;
-//    type SerializeSeq = SerializeList<Ok=Self::Ok, Error=Self::Error>;
-////    type SerializeTuple = ();
-////    type SerializeTupleStruct = ();
-////    type SerializeTupleVariant = ();
-////    type SerializeMap = ();
-////    type SerializeStruct = ();
-////    type SerializeStructVariant = ();
-//
-//    fn serialize_bool(self, v: bool) -> Result<Self::Ok, Self::Error> {
-//        unimplemented!()
-//    }
-//
-//    fn serialize_i8(self, v: i8) -> Result<Self::Ok, Self::Error> {
-//        unimplemented!()
-//    }
-//
-//    fn serialize_i16(self, v: i16) -> Result<Self::Ok, Self::Error> {
-//        unimplemented!()
-//    }
-//
-//    fn serialize_i32(self, v: i32) -> Result<Self::Ok, Self::Error> {
-//        unimplemented!()
-//    }
-//
-//    fn serialize_i64(self, v: i64) -> Result<Self::Ok, Self::Error> {
-//        unimplemented!()
-//    }
-//
-//    fn serialize_u8(self, v: u8) -> Result<Self::Ok, Self::Error> {
-//        unimplemented!()
-//    }
-//
-//    fn serialize_u16(self, v: u16) -> Result<Self::Ok, Self::Error> {
-//        unimplemented!()
-//    }
-//
-//    fn serialize_u32(self, v: u32) -> Result<Self::Ok, Self::Error> {
-//        unimplemented!()
-//    }
-//
-//    fn serialize_u64(self, v: u64) -> Result<Self::Ok, Self::Error> {
-//        unimplemented!()
-//    }
-//
-//    fn serialize_f32(self, v: f32) -> Result<Self::Ok, Self::Error> {
-//        unimplemented!()
-//    }
-//
-//    fn serialize_f64(self, v: f64) -> Result<Self::Ok, Self::Error> {
-//        unimplemented!()
-//    }
-//
-//    fn serialize_char(self, v: char) -> Result<Self::Ok, Self::Error> {
-//        unimplemented!()
-//    }
-//
-//    fn serialize_str(self, v: &str) -> Result<Self::Ok, Self::Error> {
-//        unimplemented!()
-//    }
-//
-//    fn serialize_bytes(self, v: &[u8]) -> Result<Self::Ok, Self::Error> {
-//        unimplemented!()
-//    }
-//
-//    fn serialize_none(self) -> Result<Self::Ok, Self::Error> {
-//        unimplemented!()
-//    }
-//
-//    fn serialize_some<T: ?Sized>(self, value: &T) -> Result<Self::Ok, Self::Error> where
-//        T: Serialize {
-//        unimplemented!()
-//    }
-//
-//    fn serialize_unit(self) -> Result<Self::Ok, Self::Error> {
-//        unimplemented!()
-//    }
-//
-//    fn serialize_unit_struct(self, name: &'static str) -> Result<Self::Ok, Self::Error> {
-//        unimplemented!()
-//    }
-//
-//    fn serialize_unit_variant(self, name: &'static str, variant_index: u32, variant: &'static str) -> Result<Self::Ok, Self::Error> {
-//        unimplemented!()
-//    }
-//
-//    fn serialize_newtype_struct<T: ?Sized>(self, name: &'static str, value: &T) -> Result<Self::Ok, Self::Error> where
-//        T: Serialize {
-//        unimplemented!()
-//    }
-//
-//    fn serialize_newtype_variant<T: ?Sized>(self, name: &'static str, variant_index: u32, variant: &'static str, value: &T) -> Result<Self::Ok, Self::Error> where
-//        T: Serialize {
-//        unimplemented!()
-//    }
-//
-//    fn serialize_seq(self, len: Option<usize>) -> Result<Self::SerializeSeq, Self::Error> {
-//        unimplemented!()
-//    }
-//
-//    fn serialize_tuple(self, len: usize) -> Result<Self::SerializeTuple, Self::Error> {
-//        unimplemented!()
-//    }
-//
-//    fn serialize_tuple_struct(self, name: &'static str, len: usize) -> Result<Self::SerializeTupleStruct, Self::Error> {
-//        unimplemented!()
-//    }
-//
-//    fn serialize_tuple_variant(self, name: &'static str, variant_index: u32, variant: &'static str, len: usize) -> Result<Self::SerializeTupleVariant, Self::Error> {
-//        unimplemented!()
-//    }
-//
-//    fn serialize_map(self, len: Option<usize>) -> Result<Self::SerializeMap, Self::Error> {
-//        unimplemented!()
-//    }
-//
-//    fn serialize_struct(self, name: &'static str, len: usize) -> Result<Self::SerializeStruct, Self::Error> {
-//        unimplemented!()
-//    }
-//
-//    fn serialize_struct_variant(self, name: &'static str, variant_index: u32, variant: &'static str, len: usize) -> Result<Self::SerializeStructVariant, Self::Error> {
-//        unimplemented!()
-//    }
-//
-////    fn collect_str<T: ?Sized>(self, value: &T) -> Result<Self::Ok, Self::Error> where
-////        T: Display {
-////        unimplemented!()
-////    }
-//}
 
 impl Serialize for Value {
     #[inline]
@@ -222,29 +78,18 @@ impl Serialize for Value {
         S: ::serde::Serializer,
     {
         match *self {
-            Value::Nil => serializer.serialize_unit(),
-            Value::Bool(b) => serializer.serialize_bool(b),
-            Value::Char(b) => serializer.serialize_char(b),
+            Value::Nil => serde::ser::Serializer::serialize_unit(serializer),
+            Value::Bool(b) => serde::ser::Serializer::serialize_bool(serializer,b),
+            Value::Char(b) => serde::ser::Serializer::serialize_char(serializer,b),
             Value::Number(ref n) => n.serialize(serializer),
-            Value::String(ref s) => serializer.serialize_str(s),
-            Value::Vector(ref v) => v.serialize(serializer),
+            Value::String(ref s) => serde::ser::Serializer::serialize_str(serializer,s),
+            Value::Vector(ref v) => v.serialize(serializer), //todo.
             Value::List(ref v) => {
                 v.serialize(serializer)
-//                serialize_list(serializer,v)
-//                ListSerialize{x:v}.serialize(ListSerializer)
-//                v.serialize(ListSerializer)
-//                println!("serde::Serialize for value,  ser list ref");
-//                use edn_ser::SerializeList;
-//                let v2 = v.into_iter();
-////                <Self as EDNSerializer>::serialize_list(Some(v.len()))
-//                let mut s = try!(EDNSerializer::serialize_list(serializer,Some(v.len())));
-//                for x in v2 {
-//                    try!(s.serialize_element(x))
-//                }
-//                s.end()
             },
             Value::Set(ref v) => v.serialize(serializer),
             Value::Object(ref m) => {
+                unreachable!();
                 use serde::ser::SerializeMap;
                 let mut map = try!(serializer.serialize_map(Some(m.len())));
                 for (k, v) in m {
@@ -263,19 +108,33 @@ pub struct Serializer;
 
 impl EDNSerializer for Serializer  {
     type Error = Error;
-    type SerializeL = SerializeVec;
-    type SerializeV = SerializeVec;
-    type SerializeS = SerializeVec;
+    type SerializeList = SerializeVec;
+    type SerializeVector = SerializeVec;
+    type SerializeSet = SerializeVec;
+    type SerializeMap = SerializeMap;
 
     fn serialize_list(self, len: Option<usize>) -> Result<SerializeVec,<Self as EDNSerializer>::Error> {
         Ok(SerializeVec {vec:Vec::with_capacity(len.unwrap_or(0))})
     }
 
-    fn serialize_vector(self, len: Option<usize>) -> Result<Self::SerializeV, <Self as EDNSerializer>::Error> {
+    fn serialize_vector(self, len: Option<usize>) -> Result<Self::SerializeVector, <Self as EDNSerializer>::Error> {
         Ok(SerializeVec {vec:Vec::with_capacity(len.unwrap_or(0))})
     }
-    fn serialize_set(self, len: Option<usize>) -> Result<Self::SerializeS, <Self as EDNSerializer>::Error> {
+    fn serialize_set(self, len: Option<usize>) -> Result<Self::SerializeSet, <Self as EDNSerializer>::Error> {
         Ok(SerializeVec {vec:Vec::with_capacity(len.unwrap_or(0))})
+    }
+
+    fn serialize_keyword(self, value: &Keyword) -> Result<<Self as serde::ser::Serializer>::Ok, <Self as EDNSerializer>::Error> {
+        unimplemented!()
+    }
+
+    fn serialize_symbol(self, value: &Symbol) -> Result<<Self as serde::ser::Serializer>::Ok, <Self as EDNSerializer>::Error> {
+        unimplemented!()
+    }
+
+
+    fn serialize_map(self, len: Option<usize>) -> Result<<Self as EDNSerializer>::SerializeMap, <Self as EDNSerializer>::Error> {
+        unimplemented!()
     }
 }
 
@@ -471,10 +330,11 @@ impl serde::Serializer for Serializer {
     }
 
     fn serialize_map(self, _len: Option<usize>) -> Result<Self::SerializeMap, Error> {
-        Ok(SerializeMap::Map {
-            map: Map::new(),
-            next_key: None,
-        })
+        unreachable!()
+//        Ok(SerializeMap::Map {
+//            map: Map::new(),
+//            next_key: None,
+//        })
     }
 
     fn serialize_struct(
@@ -489,7 +349,7 @@ impl serde::Serializer for Serializer {
             ::number::TOKEN => Ok(SerializeMap::Number { out_value: None }),
             #[cfg(feature = "raw_value")]
             ::raw::TOKEN => Ok(SerializeMap::RawValue { out_value: None }),
-            _ => self.serialize_map(Some(len)),
+            _ => serde::Serializer::serialize_map(self, Some(len)),
         }
     }
 
@@ -569,7 +429,7 @@ pub struct SerializeTupleVariant {
 pub enum SerializeMap {
     Map {
         map: Map<Value, Value>,
-        next_key: Option<String>,
+        next_key: Option<Value>,
     },
     #[cfg(feature = "arbitrary_precision")]
     Number { out_value: Option<Value> },
@@ -656,15 +516,34 @@ impl serde::ser::SerializeMap for SerializeMap {
     type Ok = Value;
     type Error = Error;
 
+    fn serialize_key<T: ?Sized>(&mut self, key: &T) -> Result<(), Self::Error> where
+        T: Serialize {
+        unimplemented!()
+    }
+
+    fn serialize_value<T: ?Sized>(&mut self, value: &T) -> Result<(), Self::Error> where
+        T: Serialize {
+        unimplemented!()
+    }
+
+    fn end(self) -> Result<Self::Ok, Self::Error> {
+        unimplemented!()
+    }
+}
+
+impl edn_ser::SerializeMap for SerializeMap {
+    type Ok = Value;
+    type Error = Error;
+
     fn serialize_key<T: ?Sized>(&mut self, key: &T) -> Result<(), Error>
     where
-        T: Serialize,
+        T: EDNSerialize,
     {
         match *self {
             SerializeMap::Map {
                 ref mut next_key, ..
             } => {
-                *next_key = Some(try!(key.serialize(MapKeySerializer)));
+                *next_key = Some(try!(EDNSerialize::serialize(key, Serializer)));
                 Ok(())
             }
             #[cfg(feature = "arbitrary_precision")]
@@ -676,7 +555,7 @@ impl serde::ser::SerializeMap for SerializeMap {
 
     fn serialize_value<T: ?Sized>(&mut self, value: &T) -> Result<(), Error>
     where
-        T: Serialize,
+        T: EDNSerialize,
     {
         match *self {
             SerializeMap::Map {

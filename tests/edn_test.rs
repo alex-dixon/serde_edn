@@ -32,7 +32,7 @@ use serde::ser::{self, Serialize, Serializer};
 
 use serde_bytes::{ByteBuf, Bytes};
 
-use serde_edn::{from_reader, from_slice, from_str, from_value, to_string, to_string_pretty, to_value, to_vec, to_writer, Deserializer, Number, Value, Keyword, MapInternal};
+use serde_edn::{from_reader, from_slice, from_str, from_value, to_string, to_string_pretty, to_value, to_vec, to_writer, Deserializer, Number, Value, Keyword};
 use serde_edn::value::Symbol;
 use serde_edn::edn_ser::EDNSerialize;
 use compiletest_rs::common::Mode::CompileFail;
@@ -121,11 +121,11 @@ impl SimpleStrings<'static> {
 }
 
 fn symbol(s: &str) -> Value {
-    Value::Symbol(Symbol { value: Some(String::from_str(s).unwrap()) })
+    Value::Symbol(Symbol { value: String::from_str(s).unwrap() })
 }
 
 fn keyword(s: &str) -> Value {
-    Value::Keyword(Keyword { value: Some(String::from_str(s).unwrap()) })
+    Value::Keyword(Keyword { value: String::from_str(s).unwrap() })
 }
 
 fn number(s: &str) -> Value {
@@ -149,6 +149,10 @@ fn round_trip2(s: &str, ) {
 
     let b = to_string(&a).unwrap();
     assert_eq!(b, s)
+}
+
+fn read(s: &str) -> Value {
+    from_reader(s.as_bytes().as_ref()).unwrap()
 }
 
 #[test]
@@ -186,7 +190,6 @@ macro_rules! map(
 
 #[test]
 fn parse_map() {
-
     let empty = Value::from_str(r#"{}"#).unwrap();
     assert_eq!(empty, Value::Object(Map::new()));
 
@@ -254,8 +257,33 @@ fn parse_map() {
         map!(map!(keyword("a")=>number("1"))=> symbol("foo")),
         read(r#"{{:a 1} foo}"#)
     );
+}
 
+#[test]
+fn serialize_map() {
+    let st = SimpleTypes::default();
+    assert_eq!(
+        to_string(&Value::Object(Map::new())).unwrap(),
+        "{}"
+    );
 
+    let vs = st.clone().values();
+    assert_eq!(
+        to_string(&map!(keyword("a")=>number("42"))).unwrap(),
+            r#"{:a 42}"#
+    );
+
+    let st2 = SimpleTypes::default();
+    assert_eq!(
+        to_string(&map!(string("a")=>string("b"))
+        ).unwrap(),
+        r#"{"a" "b"}"#
+    );
+
+//    let in_str = r#"{"statuses" [{"id_str" "505874924095815681", "retweeted" false, "lang" "ja", "truncated" false, "place" nil, "in_reply_to_status_id" nil, "user" {"listed_count" 0, "id_str" "1186275104", "profile_link_color" "0084B4", "profile_sidebar_border_color" "C0DEED", "lang" "en", "follow_request_sent" false, "profile_text_color" "333333", "url" nil, "profile_background_tile" false, "contributors_enabled" false, "favourites_count" 235, "notifications" false, "friends_count" 252, "profile_image_url_https" "https://pbs.twimg.com/profile_images/497760886795153410/LDjAwR_y_normal.jpeg", "profile_background_color" "C0DEED", "id" 1186275104, "is_translator" false, "profile_background_image_url_https" "https://abs.twimg.com/images/themes/theme1/bg.png", "protected" false, "utc_offset" nil, "name" "AYUMI", "verified" false, "time_zone" nil, "location" "", "is_translation_enabled" false, "profile_image_url" "http://pbs.twimg.com/profile_images/497760886795153410/LDjAwR_y_normal.jpeg", "default_profile_image" false, "profile_background_image_url" "http://abs.twimg.com/images/themes/theme1/bg.png", "profile_banner_url" "https://pbs.twimg.com/profile_banners/1186275104/1409318784", "statuses_count" 1769, "created_at" "Sat Feb 16 13:40:25 +0000 2013", "geo_enabled" false, "followers_count" 262, "profile_sidebar_fill_color" "DDEEF6", "profile_use_background_image" true, "default_profile" true, "screen_name" "ayuu0123", "following" false, "description" "元野球部マネージャー❤︎…最高の夏をありがとう…❤︎", "entities" {"description" {"urls" []}}}, "favorited" false, "id" 505874924095815700, "in_reply_to_screen_name" "aym0566x", "coordinates" nil, "favorite_count" 0, "geo" nil, "text" "@aym0566x \n\n名前:前田あゆみ\n第一印象:なんか怖っ！\n今の印象:とりあえずキモい。噛み合わない\n好きなところ:ぶすでキモいとこ😋✨✨\n思い出:んーーー、ありすぎ😊❤️\nLINE交換できる？:あぁ……ごめん✋\nトプ画をみて:照れますがな😘✨\n一言:お前は一生もんのダチ💖", "in_reply_to_user_id" 866260188, "metadata" {"result_type" "recent", "iso_language_code" "ja"}, "in_reply_to_user_id_str" "866260188", "source" "<a href=\"http://twitter.com/download/iphone\" rel=\"nofollow\">Twitter for iPhone</a>", "created_at" "Sun Aug 31 00:29:15 +0000 2014", "in_reply_to_status_id_str" nil, "contributors" nil, "retweet_count" 0, "entities" {"hashtags" [], "symbols" [], "urls" [], "user_mentions" [{"screen_name" "aym0566x", "name" "前田あゆみ", "id" 866260188, "id_str" "866260188", "indices" [0 9]}]}}]}"#;
+//    let v = Value::from_str(in_str).unwrap();
+//    println!("{}", v.to_string());
+//    assert_eq!(true,false)
 }
 
 #[test]
@@ -278,6 +306,11 @@ fn parse_list() {
                          Value::Vector(vec![st.keyword,
                                             Value::List(vec![st.symbol])])])
     )
+}
+#[test]
+fn parse_vector() {
+    let unclosed1 = Value::from_str("[").unwrap_err();
+    assert!(unclosed1.is_eof())
 }
 
 #[test]
@@ -354,9 +387,6 @@ fn serialize_set() {
     );
 }
 
-fn read(s: &str) -> Value {
-    from_reader(s.as_bytes().as_ref()).unwrap()
-}
 
 #[test]
 fn deserialize_reserved_vs_symbol() {

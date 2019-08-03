@@ -103,8 +103,13 @@ fn bench(c: &mut Criterion) {
     deserialize_slice_from_file(c, TWITTER_PATH);
     deserialize_slice_from_file(c, TWITTER_KW_PATH);
     serde_json_deserialize_slice_from_file(c, TWITTER_JSON_PATH);
+
     serialize_slice_from_file(c, TWITTER_PATH);
+    serialize_slice_from_file(c, TWITTER_KW_PATH);
     serde_json_serialize_slice_from_file(c, TWITTER_JSON_PATH);
+
+    serialize_slice_from_file(c, CANADA_PATH);
+    serde_json_serialize_slice_from_file(c, CANADA_JSON_PATH);
 }
 
 criterion_group!(benches, bench);

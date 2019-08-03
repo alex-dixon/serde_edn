@@ -9,7 +9,7 @@
 use std::borrow::Cow;
 
 use super::Value;
-use map::{MapInternal, Map};
+use map::{Map};
 use number::Number;
 
 macro_rules! from_integer {

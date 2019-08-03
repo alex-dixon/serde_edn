@@ -4,9 +4,9 @@ use serde::de::{self, Visitor, MapAccess, IntoDeserializer};
 use std::fmt::{self, Debug};
 use std::str::FromStr;
 
-#[derive(Clone, PartialEq,Hash)]
+#[derive(Clone, PartialEq, Hash)]
 pub struct Keyword {
-    pub value: Option<String>,
+    pub value: String,
 }
 
 pub const TOKEN: &'static str = "$serde_edn::private::KeywordHack";
@@ -17,20 +17,20 @@ pub const NAME: &'static str = "$__serde_edn_private_Keyword";
 impl Keyword {
     #[inline]
     pub fn from_str(s: &str) -> Result<Keyword, Error> {
-        Ok(Keyword { value: Some(String::from(s)) })
+        Ok(Keyword { value: String::from(s) })
     }
 }
 
 impl FromStr for Keyword {
     type Err = Error;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Keyword { value: Some(String::from(s)) })
+        Ok(Keyword { value: String::from(s) })
     }
 }
 
 impl fmt::Display for Keyword {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        if let Some(ref value)  = self.value {
+        if let ref value = self.value {
             write!(formatter, ":{}", value)?;
         }
         Ok(())
@@ -170,7 +170,6 @@ impl<'de> Deserializer<'de> for KeywordFieldDeserializer {
         unit_struct tuple_struct tuple enum identifier
     }
 }
-
 
 
 // does it ever end?

@@ -12,26 +12,26 @@ pub const NAME: &'static str = "$__serde_edn_private_Symbol";
 
 #[derive(Clone, PartialEq,Hash)]
 pub struct Symbol {
-    pub value: Option<String>,
+    pub value: String,
 }
 
 impl Symbol {
     #[inline]
     pub fn from_str(s: &str) -> Result<Symbol, Error> {
-        Ok(Symbol { value: Some(String::from(s)) })
+        Ok(Symbol { value: String::from(s) })
     }
 }
 
 impl FromStr for Symbol {
     type Err = Error;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Symbol { value: Some(String::from(s)) })
+        Ok(Symbol { value: String::from(s) })
     }
 }
 
 impl fmt::Display for Symbol {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        if let Some(ref value)  = self.value {
+        if let ref value  = self.value {
             write!(formatter, "{}", value)?;
         }
         Ok(())

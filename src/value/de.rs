@@ -19,7 +19,7 @@ use serde::de::{
 };
 
 use error::Error;
-use map::{MapInternal, Map};
+use map::{ Map};
 use number::Number;
 use value::Value;
 
@@ -217,12 +217,12 @@ impl<'de> EDNDeserialize<'de> for Value {
                     E: serde::de::Error,
             {
 
-                Ok(Value::Keyword(Keyword{ value: Some(String::from(s))}))
+                Ok(Value::Keyword(Keyword{ value: String::from(s)}))
             }
 
             #[inline]
             fn visit_symbol<E>(self, s: &str) -> Result<Self::Value, E> {
-                Ok(Value::Symbol(Symbol{ value: Some(String::from(s))}))
+                Ok(Value::Symbol(Symbol{ value: String::from(s)}))
             }
 
             fn visit_map<V>(self, mut visitor: V) -> Result<Value, V::Error>
@@ -997,19 +997,19 @@ impl EDNMapDeserializer {
         }
     }
 }
-struct MapDeserializer {
-    iter: <MapInternal<String, Value> as IntoIterator>::IntoIter,
-    value: Option<Value>,
-}
-
-impl MapDeserializer {
-    fn new(map: MapInternal<String, Value>) -> Self {
-        MapDeserializer {
-            iter: map.into_iter(),
-            value: None,
-        }
-    }
-}
+//struct MapDeserializer {
+//    iter: <MapInternal<String, Value> as IntoIterator>::IntoIter,
+//    value: Option<Value>,
+//}
+//
+//impl MapDeserializer {
+//    fn new(map: MapInternal<String, Value>) -> Self {
+//        MapDeserializer {
+//            iter: map.into_iter(),
+//            value: None,
+//        }
+//    }
+//}
 
 impl<'de> EDNMapAccess<'de> for EDNMapDeserializer {
     type Error = Error;
@@ -1024,42 +1024,42 @@ impl<'de> EDNMapAccess<'de> for EDNMapDeserializer {
         unimplemented!()
     }
 }
-impl<'de> MapAccess<'de> for MapDeserializer {
-    type Error = Error;
-
-    fn next_key_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>, Error>
-        where
-            T: DeserializeSeed<'de>,
-    {
-        match self.iter.next() {
-            Some((key, value)) => {
-                self.value = Some(value);
-                let key_de = MapKeyDeserializer {
-                    key: Cow::Owned(key),
-                };
-                seed.deserialize(key_de).map(Some)
-            }
-            None => Ok(None),
-        }
-    }
-
-    fn next_value_seed<T>(&mut self, seed: T) -> Result<T::Value, Error>
-        where
-            T: DeserializeSeed<'de>,
-    {
-        match self.value.take() {
-            Some(value) => seed.deserialize(value),
-            None => Err(serde::de::Error::custom("value is missing")),
-        }
-    }
-
-    fn size_hint(&self) -> Option<usize> {
-        match self.iter.size_hint() {
-            (lower, Some(upper)) if lower == upper => Some(upper),
-            _ => None,
-        }
-    }
-}
+//impl<'de> MapAccess<'de> for MapDeserializer {
+//    type Error = Error;
+//
+//    fn next_key_seed<T>(&mut self, seed: T) -> Result<Option<T::Value>, Error>
+//        where
+//            T: DeserializeSeed<'de>,
+//    {
+//        match self.iter.next() {
+//            Some((key, value)) => {
+//                self.value = Some(value);
+//                let key_de = MapKeyDeserializer {
+//                    key: Cow::Owned(key),
+//                };
+//                seed.deserialize(key_de).map(Some)
+//            }
+//            None => Ok(None),
+//        }
+//    }
+//
+//    fn next_value_seed<T>(&mut self, seed: T) -> Result<T::Value, Error>
+//        where
+//            T: DeserializeSeed<'de>,
+//    {
+//        match self.value.take() {
+//            Some(value) => seed.deserialize(value),
+//            None => Err(serde::de::Error::custom("value is missing")),
+//        }
+//    }
+//
+//    fn size_hint(&self) -> Option<usize> {
+//        match self.iter.size_hint() {
+//            (lower, Some(upper)) if lower == upper => Some(upper),
+//            _ => None,
+//        }
+//    }
+//}
 
 impl<'de> EDNDeserializer<'de> for EDNMapDeserializer {
     type Error = Error;
@@ -1085,23 +1085,23 @@ impl<'de> EDNDeserializer<'de> for EDNMapDeserializer {
     }
 }
 
-impl<'de> serde::Deserializer<'de> for MapDeserializer {
-    type Error = Error;
-
-    #[inline]
-    fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Error>
-        where
-            V: Visitor<'de>,
-    {
-        visitor.visit_map(self)
-    }
-
-    forward_to_deserialize_any! {
-        bool i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 f32 f64 char str string
-        bytes byte_buf option unit unit_struct newtype_struct seq tuple
-        tuple_struct map struct enum identifier ignored_any
-    }
-}
+//impl<'de> serde::Deserializer<'de> for MapDeserializer {
+//    type Error = Error;
+//
+//    #[inline]
+//    fn deserialize_any<V>(self, visitor: V) -> Result<V::Value, Error>
+//        where
+//            V: Visitor<'de>,
+//    {
+//        visitor.visit_map(self)
+//    }
+//
+//    forward_to_deserialize_any! {
+//        bool i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 f32 f64 char str string
+//        bytes byte_buf option unit unit_struct newtype_struct seq tuple
+//        tuple_struct map struct enum identifier ignored_any
+//    }
+//}
 
 macro_rules! deserialize_value_ref_number {
     ($method:ident) => {
@@ -1220,29 +1220,9 @@ impl<'de> serde::Deserializer<'de> for &'de Value {
             Value::List(ref v) => visit_list_ref(v, visitor),
             Value::Set(ref v) => visit_set_ref(v, visitor),
             Value::Object(ref v) => visit_object_ref(v, visitor),
-            Value::Keyword(ref kw) => {
-                //todo. keyword ref  deserializer?
-                match kw.clone().value {
-                    None => Err(serde::de::Error::custom("keyword error")),
-                    Some(v) => {
-                        println!("keyword ref visit str");
-                        visitor.visit_str(&v)
-                    }
-                }
-
-//                kw.deserialize_any(visitor)
-//                visitor.visit_borrowed_str(&kw.value)
-            }
-            Value::Symbol(ref sym) => {
-                match sym.clone().value {
-                    None => Err(serde::de::Error::custom("symbol error")),
-                    Some(v) => {
-                        println!("symbol ref visit str");
-                        visitor.visit_str(&v)
-                    }
-                }
-//                visitor.visit_borrowed_str(&sym.value)
-            }
+            //todo.
+            Value::Keyword(ref kw) => visitor.visit_str(kw.value.as_str()),
+            Value::Symbol(ref sym) => visitor.visit_str(sym.value.as_str())
         }
     }
 

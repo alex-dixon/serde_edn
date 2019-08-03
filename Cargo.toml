@@ -28,6 +28,7 @@ itoa = "0.4.3"
 ryu = "0.2"
 uuid = "0.7.4"
 float-cmp = "0.4.0"
+hashbrown = "0.5"
 #serde_edn_macros = { path = "./macros" }
 
 [dev-dependencies]

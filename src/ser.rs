@@ -16,9 +16,10 @@ use std::str;
 use super::error::{Error, ErrorCode, Result};
 use serde::ser::{self, Impossible, Serialize};
 
-use itoa;
-use ryu;
+use ::{itoa, Keyword};
+use ::{ryu, edn_ser};
 use edn_ser::{EDNSerialize, EDNSerializer, SerializeList, SerializeVector, SerializeSet};
+use symbol::Symbol;
 
 /// A structure for serializing Rust values into edn.
 pub struct Serializer<W, F = CompactFormatter> {
@@ -69,6 +70,7 @@ where
         self.writer
     }
 }
+
 impl<'a, W, F> EDNSerializer for &'a mut Serializer<W, F>
     where
         W: io::Write,
@@ -77,12 +79,13 @@ impl<'a, W, F> EDNSerializer for &'a mut Serializer<W, F>
 //    type Ok = ();
     type Error = Error;
 
-    type SerializeL = Compound<'a, W, F>;
-    type SerializeV = Compound<'a, W, F>;
-    type SerializeS = Compound<'a, W, F>;
+    type SerializeList = Compound<'a, W, F>;
+    type SerializeVector = Compound<'a, W, F>;
+    type SerializeSet = Compound<'a, W, F>;
+    type SerializeMap = Compound<'a, W, F>;
 
     #[inline]
-    fn serialize_list(self, len: Option<usize>) -> Result<Self::SerializeL> {
+    fn serialize_list(self, len: Option<usize>) -> Result<Self::SerializeList> {
         if len == Some(0) {
             try!(self
                 .formatter
@@ -108,7 +111,8 @@ impl<'a, W, F> EDNSerializer for &'a mut Serializer<W, F>
         }
     }
 
-    fn serialize_vector(self, len: Option<usize>) -> Result<Self::SerializeV> {
+    #[inline]
+    fn serialize_vector(self, len: Option<usize>) -> Result<Self::SerializeVector> {
         if len == Some(0) {
             try!(self
                 .formatter
@@ -134,8 +138,8 @@ impl<'a, W, F> EDNSerializer for &'a mut Serializer<W, F>
         }
     }
 
-    fn serialize_set(self, len: Option<usize>) -> Result<Self::SerializeS> {
-        println!("ser set");
+    #[inline]
+    fn serialize_set(self, len: Option<usize>) -> Result<Self::SerializeSet> {
         if len == Some(0) {
             try!(self
                 .formatter
@@ -153,6 +157,51 @@ impl<'a, W, F> EDNSerializer for &'a mut Serializer<W, F>
             try!(self
                 .formatter
                 .begin_set(&mut self.writer)
+                .map_err(Error::io));
+            Ok(Compound::Map {
+                ser: self,
+                state: State::First,
+            })
+        }
+    }
+
+    #[inline]
+    fn serialize_keyword(self, value: &Keyword) -> Result<()> {
+        try!(self
+            .formatter
+            .write_keyword_str(&mut self.writer, value.value.as_str())
+            .map_err(Error::io));
+        Ok(())
+    }
+
+    #[inline]
+    fn serialize_symbol(self, value: &Symbol) -> Result<()> {
+        try!(self
+            .formatter
+            .write_symbol_str(&mut self.writer, value.value.as_str())
+            .map_err(Error::io));
+        Ok(())
+    }
+
+    #[inline]
+    fn serialize_map(self, len: Option<usize>) -> Result<<Self as EDNSerializer>::SerializeMap> {
+        if len == Some(0) {
+            try!(self
+                .formatter
+                .begin_object(&mut self.writer)
+                .map_err(Error::io));
+            try!(self
+                .formatter
+                .end_object(&mut self.writer)
+                .map_err(Error::io));
+            Ok(Compound::Map {
+                ser: self,
+                state: State::Empty,
+            })
+        } else {
+            try!(self
+                .formatter
+                .begin_object(&mut self.writer)
                 .map_err(Error::io));
             Ok(Compound::Map {
                 ser: self,
@@ -554,7 +603,7 @@ where
             ::number::TOKEN => Ok(Compound::Number { ser: self }),
             #[cfg(feature = "raw_value")]
             ::raw::TOKEN => Ok(Compound::RawValue { ser: self }),
-            _ => self.serialize_map(Some(len)),
+            _ => serde::ser::Serializer::serialize_map(self, Some(len)),
         }
     }
 
@@ -583,7 +632,7 @@ where
             .formatter
             .begin_object_value(&mut self.writer)
             .map_err(Error::io));
-        self.serialize_map(Some(len))
+        serde::ser::Serializer::serialize_map(self, Some(len))
     }
 
     fn collect_str<T: ?Sized>(self, value: &T) -> Result<Self::Ok>
@@ -677,7 +726,6 @@ impl<'a, W, F> SerializeList for Compound<'a, W, F>
     fn serialize_element<T: ?Sized>(&mut self, value: &T) -> Result<()>
         where
             T: EDNSerialize,
-//            T: Serialize,
     {
         match *self {
             Compound::Map {
@@ -686,14 +734,13 @@ impl<'a, W, F> SerializeList for Compound<'a, W, F>
             } => {
                 try!(ser
                     .formatter
-                    .begin_vector_value(&mut ser.writer, *state == State::First)
+                    .begin_seq_value(&mut ser.writer, *state == State::First)
                     .map_err(Error::io));
                 *state = State::Rest;
-//                try!(value.serialize(&mut **ser));
                 try!(EDNSerialize::serialize(value,&mut **ser));
                 try!(ser
                     .formatter
-                    .end_vector_value(&mut ser.writer)
+                    .end_seq_value(&mut ser.writer)
                     .map_err(Error::io));
                 Ok(())
             }
@@ -745,14 +792,13 @@ impl<'a, W, F> SerializeVector for Compound<'a, W, F>
             } => {
                 try!(ser
                     .formatter
-                    .begin_vector_value(&mut ser.writer, *state == State::First)
+                    .begin_seq_value(&mut ser.writer, *state == State::First)
                     .map_err(Error::io));
                 *state = State::Rest;
-//                try!(value.serialize(&mut **ser));
                 try!(EDNSerialize::serialize(value,&mut **ser));
                 try!(ser
                     .formatter
-                    .end_vector_value(&mut ser.writer)
+                    .end_seq_value(&mut ser.writer)
                     .map_err(Error::io));
                 Ok(())
             }
@@ -783,6 +829,91 @@ impl<'a, W, F> SerializeVector for Compound<'a, W, F>
     }
 }
 
+//todo. remove
+impl<'a, W, F> edn_ser::SerializeMap for Compound<'a, W, F>
+    where
+        W: io::Write,
+        F: Formatter,
+{
+    type Ok = ();
+    type Error = Error;
+
+    #[inline]
+    fn serialize_key<T: ?Sized>(&mut self, key: &T) -> Result<()>
+        where
+            T: EDNSerialize,
+    {
+        match *self {
+            Compound::Map {
+                ref mut ser,
+                ref mut state,
+            } => {
+                try!(ser
+                    .formatter
+                    .begin_object_key(&mut ser.writer, *state == State::First)
+                    .map_err(Error::io));
+                *state = State::Rest;
+                try!(EDNSerialize::serialize(key,&mut **ser ));
+//                try!(ser
+//                    .formatter
+//                    .end_object_key(&mut ser.writer)
+//                    .map_err(Error::io));
+                Ok(())
+            }
+            #[cfg(feature = "arbitrary_precision")]
+            Compound::Number { .. } => unreachable!(),
+            #[cfg(feature = "raw_value")]
+            Compound::RawValue { .. } => unreachable!(),
+            _ => unreachable!(),
+        }
+    }
+
+    #[inline]
+    fn serialize_value<T: ?Sized>(&mut self, value: &T) -> Result<()>
+        where
+            T: EDNSerialize,
+    {
+        match *self {
+            Compound::Map { ref mut ser, .. } => {
+                try!(ser
+                    .formatter
+                    .begin_object_value(&mut ser.writer)
+                    .map_err(Error::io));
+                try!(EDNSerialize::serialize(value,&mut **ser));
+//                try!(ser
+//                    .formatter
+//                    .end_object_value(&mut ser.writer)
+//                    .map_err(Error::io));
+                Ok(())
+            }
+            #[cfg(feature = "arbitrary_precision")]
+            Compound::Number { .. } => unreachable!(),
+            #[cfg(feature = "raw_value")]
+            Compound::RawValue { .. } => unreachable!(),
+            _ => unreachable!(),
+        }
+    }
+
+    #[inline]
+    fn end(self) -> Result<()> {
+        match self {
+            Compound::Map { ser, state } => {
+                match state {
+                    State::Empty => {}
+                    _ => try!(ser.formatter.end_object(&mut ser.writer).map_err(Error::io)),
+                }
+                Ok(())
+            }
+            #[cfg(feature = "arbitrary_precision")]
+            Compound::Number { .. } => unreachable!(),
+            #[cfg(feature = "raw_value")]
+            Compound::RawValue { .. } => unreachable!(),
+            _ => unreachable!()
+        }
+    }
+}
+
+
 impl<'a, W, F> SerializeSet for Compound<'a, W, F>
     where
         W: io::Write,
@@ -795,7 +926,6 @@ impl<'a, W, F> SerializeSet for Compound<'a, W, F>
     fn serialize_element<T: ?Sized>(&mut self, value: &T) -> Result<()>
         where
             T: EDNSerialize,
-//            T: Serialize,
     {
         match *self {
             Compound::Map {
@@ -804,14 +934,13 @@ impl<'a, W, F> SerializeSet for Compound<'a, W, F>
             } => {
                 try!(ser
                     .formatter
-                    .begin_vector_value(&mut ser.writer, *state == State::First)
+                    .begin_seq_value(&mut ser.writer, *state == State::First)
                     .map_err(Error::io));
                 *state = State::Rest;
-//                try!(value.serialize(&mut **ser));
                 try!(EDNSerialize::serialize(value,&mut **ser));
                 try!(ser
                     .formatter
-                    .end_vector_value(&mut ser.writer)
+                    .end_seq_value(&mut ser.writer)
                     .map_err(Error::io));
                 Ok(())
             }
@@ -862,13 +991,13 @@ where
             } => {
                 try!(ser
                     .formatter
-                    .begin_vector_value(&mut ser.writer, *state == State::First)
+                    .begin_seq_value(&mut ser.writer, *state == State::First)
                     .map_err(Error::io));
                 *state = State::Rest;
                 try!(value.serialize(&mut **ser));
                 try!(ser
                     .formatter
-                    .end_vector_value(&mut ser.writer)
+                    .end_seq_value(&mut ser.writer)
                     .map_err(Error::io));
                 Ok(())
             }
@@ -2433,8 +2562,7 @@ pub trait Formatter {
         where
             W: io::Write,
     {
-        // Display for Keyword adds colon
-//        writer.write_all(&[b':']);
+        writer.write_all(&[b':']);
         writer.write_all(value.as_bytes())
     }
 
@@ -2578,7 +2706,7 @@ pub trait Formatter {
     /// Called before every vector value.  Writes a `,` if needed to
     /// the specified writer.
     #[inline]
-    fn begin_vector_value<W: ?Sized>(&mut self, writer: &mut W, first:bool) -> io::Result<()>
+    fn begin_seq_value<W: ?Sized>(&mut self, writer: &mut W, first:bool) -> io::Result<()>
         where
             W: io::Write,
     {
@@ -2591,7 +2719,7 @@ pub trait Formatter {
 
     /// Called after every vector value.
     #[inline]
-    fn end_vector_value<W: ?Sized>(&mut self, _writer: &mut W) -> io::Result<()>
+    fn end_seq_value<W: ?Sized>(&mut self, _writer: &mut W) -> io::Result<()>
         where
             W: io::Write,
     {
@@ -2736,7 +2864,7 @@ impl<'a> Formatter for PrettyFormatter<'a> {
     }
 
     #[inline]
-    fn begin_vector_value<W: ?Sized>(&mut self, writer: &mut W, first: bool) -> io::Result<()>
+    fn begin_seq_value<W: ?Sized>(&mut self, writer: &mut W, first: bool) -> io::Result<()>
     where
         W: io::Write,
     {
@@ -2750,7 +2878,7 @@ impl<'a> Formatter for PrettyFormatter<'a> {
     }
 
     #[inline]
-    fn end_vector_value<W: ?Sized>(&mut self, _writer: &mut W) -> io::Result<()>
+    fn end_seq_value<W: ?Sized>(&mut self, _writer: &mut W) -> io::Result<()>
         where
             W: io::Write,
     {
@@ -2910,7 +3038,7 @@ where
     T: EDNSerialize,
 {
     let mut ser = Serializer::new(writer);
-    try!(EDNSerialize::serialize(value,&mut ser));
+    try!(EDNSerialize::serialize(value, &mut ser));
     Ok(())
 }
 
