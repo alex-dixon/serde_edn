@@ -1,5 +1,5 @@
 use serde::de::{SeqAccess, Visitor};
-use serde::export::PhantomData;
+use std::marker::PhantomData;
 
 pub trait EDNVisitor<'de>: Sized + Visitor<'de> {
     type EDNValue;
