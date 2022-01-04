@@ -33,7 +33,7 @@ fn deserialize_slice_from_file(c: &mut Criterion, filepath: &str) {
                 v
             }),
             vec![bytes],
-        ).throughput(|elems| Throughput::Elements(elems.len() as u32)),
+        ).throughput(|elems| Throughput::Elements(elems.len() as u64)),
     );
 }
 
@@ -53,7 +53,7 @@ fn serde_json_deserialize_slice_from_file(c: &mut Criterion, filepath: &str) {
                 v
             }),
             vec![bytes],
-        ).throughput(|elems| Throughput::Elements(elems.len() as u32)),
+        ).throughput(|elems| Throughput::Elements(elems.len() as u64)),
     );
 }
 
@@ -73,7 +73,7 @@ fn serialize_slice_from_file(c: &mut Criterion, filepath: &str) {
                 s
             }),
             vec![values],
-        ).throughput(move|elems| Throughput::Elements(bytes.len() as u32)),
+        ).throughput(move|elems| Throughput::Elements(bytes.len() as u64)),
     );
 }
 
@@ -93,7 +93,7 @@ fn serde_json_serialize_slice_from_file(c: &mut Criterion, filepath: &str) {
                 s
             }),
             vec![values],
-        ).throughput(move|elems| Throughput::Elements(bytes.len() as u32)),
+        ).throughput(move|elems| Throughput::Elements(bytes.len() as u64)),
     );
 }
 

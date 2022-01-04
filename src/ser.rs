@@ -11,6 +11,7 @@
 use std::fmt;
 use std::io;
 use std::num::FpCategory;
+use std::os::unix::prelude::OsStrExt;
 use std::str;
 
 use super::error::{Error, ErrorCode, Result};
@@ -2460,7 +2461,7 @@ pub trait Formatter {
     where
         W: io::Write,
     {
-        itoa::write(writer, value).map(drop)
+        writer.write_all(itoa::Buffer::new().format(value).as_bytes())
     }
 
     /// Writes an integer value like `-123` to the specified writer.
@@ -2469,7 +2470,7 @@ pub trait Formatter {
     where
         W: io::Write,
     {
-        itoa::write(writer, value).map(drop)
+        writer.write_all(itoa::Buffer::new().format(value).as_bytes())
     }
 
     /// Writes an integer value like `-123` to the specified writer.
@@ -2478,7 +2479,7 @@ pub trait Formatter {
     where
         W: io::Write,
     {
-        itoa::write(writer, value).map(drop)
+        writer.write_all(itoa::Buffer::new().format(value).as_bytes())
     }
 
     /// Writes an integer value like `-123` to the specified writer.
@@ -2487,7 +2488,7 @@ pub trait Formatter {
     where
         W: io::Write,
     {
-        itoa::write(writer, value).map(drop)
+        writer.write_all(itoa::Buffer::new().format(value).as_bytes())
     }
 
     /// Writes an integer value like `123` to the specified writer.
@@ -2496,7 +2497,7 @@ pub trait Formatter {
     where
         W: io::Write,
     {
-        itoa::write(writer, value).map(drop)
+        writer.write_all(itoa::Buffer::new().format(value).as_bytes())
     }
 
     /// Writes an integer value like `123` to the specified writer.
@@ -2505,7 +2506,7 @@ pub trait Formatter {
     where
         W: io::Write,
     {
-        itoa::write(writer, value).map(drop)
+        writer.write_all(itoa::Buffer::new().format(value).as_bytes())
     }
 
     /// Writes an integer value like `123` to the specified writer.
@@ -2514,7 +2515,7 @@ pub trait Formatter {
     where
         W: io::Write,
     {
-        itoa::write(writer, value).map(drop)
+        writer.write_all(itoa::Buffer::new().format(value).as_bytes())
     }
 
     /// Writes an integer value like `123` to the specified writer.
@@ -2523,7 +2524,7 @@ pub trait Formatter {
     where
         W: io::Write,
     {
-        itoa::write(writer, value).map(drop)
+        writer.write_all(itoa::Buffer::new().format(value).as_bytes())
     }
 
     /// Writes a floating point value like `-31.26e+12` to the specified writer.
