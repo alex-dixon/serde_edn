@@ -258,7 +258,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                     Err(err) => return err,
                 }
             }
-            b'0'...b'9' => match self.parse_any_number(true) {
+            b'0'..=b'9' => match self.parse_any_number(true) {
                 Ok(n) => n.invalid_type(exp),
                 Err(err) => return err,
             },
@@ -294,7 +294,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                 self.eat_char();
                 try!(self.parse_integer(false)).visit(visitor)
             }
-            b'0'...b'9' => try!(self.parse_integer(true)).visit(visitor),
+            b'0'..=b'9' => try!(self.parse_integer(true)).visit(visitor),
             _ => Err(self.peek_invalid_type(&visitor)),
         };
 
@@ -311,15 +311,15 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                     buf.push('0');
                     // There can be only one leading '0'.
                     match try!(self.peek_or_null()) {
-                        b'0'...b'9' => {
+                        b'0'..=b'9' => {
                             Err(self.peek_error(ErrorCode::InvalidNumber))
                         }
                         _ => Ok(()),
                     }
                 }
-                c @ b'1'...b'9' => {
+                c @ b'1'..=b'9' => {
                     buf.push(c as char);
-                    while let c @ b'0'...b'9' = try!(self.peek_or_null()) {
+                    while let c @ b'0'..=b'9' = try!(self.peek_or_null()) {
                         self.eat_char();
                         buf.push(c as char);
                     }
@@ -359,16 +359,16 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             b'0' => {
                 // There can be only one leading '0'.
                 match try!(self.peek_or_null()) {
-                    b'0'...b'9' => Err(self.peek_error(ErrorCode::InvalidNumber)),
+                    b'0'..=b'9' => Err(self.peek_error(ErrorCode::InvalidNumber)),
                     _ => self.parse_number(positive, 0),
                 }
             }
-            c @ b'1'...b'9' => {
+            c @ b'1'..=b'9' => {
                 let mut res = (c - b'0') as u64;
 
                 loop {
                     match try!(self.peek_or_null()) {
-                        c @ b'0'...b'9' => {
+                        c @ b'0'..=b'9' => {
                             self.eat_char();
                             let digit = (c - b'0') as u64;
 
@@ -403,7 +403,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
     ) -> Result<f64> {
         loop {
             match try!(self.peek_or_null()) {
-                b'0'...b'9' => {
+                b'0'..=b'9' => {
                     self.eat_char();
                     // This could overflow... if your integer is gigabytes long.
                     // Ignore that possibility.
@@ -452,7 +452,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         self.eat_char();
 
         let mut at_least_one_digit = false;
-        while let c @ b'0'...b'9' = try!(self.peek_or_null()) {
+        while let c @ b'0'..=b'9' = try!(self.peek_or_null()) {
             self.eat_char();
             let digit = (c - b'0') as u64;
             at_least_one_digit = true;
@@ -460,7 +460,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             if overflow!(significand * 10 + digit, u64::max_value()) {
                 // The next multiply/add would overflow, so just ignore all
                 // further digits.
-                while let b'0'...b'9' = try!(self.peek_or_null()) {
+                while let b'0'..=b'9' = try!(self.peek_or_null()) {
                     self.eat_char();
                 }
                 break;
@@ -502,13 +502,13 @@ impl<'de, R: Read<'de>> Deserializer<R> {
 
         // Make sure a digit follows the exponent place.
         let mut exp = match try!(self.next_char_or_null()) {
-            c @ b'0'...b'9' => (c - b'0') as i32,
+            c @ b'0'..=b'9' => (c - b'0') as i32,
             _ => {
                 return Err(self.error(ErrorCode::InvalidNumber));
             }
         };
 
-        while let c @ b'0'...b'9' = try!(self.peek_or_null()) {
+        while let c @ b'0'..=b'9' = try!(self.peek_or_null()) {
             self.eat_char();
             let digit = (c - b'0') as i32;
 
@@ -543,7 +543,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             return Err(self.error(ErrorCode::NumberOutOfRange));
         }
 
-        while let b'0'...b'9' = try!(self.peek_or_null()) {
+        while let b'0'..=b'9' = try!(self.peek_or_null()) {
             self.eat_char();
         }
         Ok(if positive { 0.0 } else { -0.0 })
@@ -562,7 +562,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                 self.eat_char();
                 self.parse_any_number(false)
             }
-            b'0'...b'9' => self.parse_any_number(true),
+            b'0'..=b'9' => self.parse_any_number(true),
             _ => Err(self.peek_error(ErrorCode::InvalidNumber)),
         };
 
@@ -614,13 +614,13 @@ impl<'de, R: Read<'de>> Deserializer<R> {
             b'0' => {
                 // There can be only one leading '0'.
                 match try!(self.peek_or_null()) {
-                    b'0'...b'9' => Err(self.peek_error(ErrorCode::InvalidNumber)),
+                    b'0'..=b'9' => Err(self.peek_error(ErrorCode::InvalidNumber)),
                     _ => self.scan_number(buf),
                 }
             }
-            b'1'...b'9' => loop {
+            b'1'..=b'9' => loop {
                 match try!(self.peek_or_null()) {
-                    c @ b'0'...b'9' => {
+                    c @ b'0'..=b'9' => {
                         self.eat_char();
                         buf.push(c as char);
                     }
@@ -648,7 +648,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         buf.push('.');
 
         let mut at_least_one_digit = false;
-        while let c @ b'0'...b'9' = try!(self.peek_or_null()) {
+        while let c @ b'0'..=b'9' = try!(self.peek_or_null()) {
             self.eat_char();
             buf.push(c as char);
             at_least_one_digit = true;
@@ -682,13 +682,13 @@ impl<'de, R: Read<'de>> Deserializer<R> {
 
         // Make sure a digit follows the exponent place.
         match try!(self.scan_or_null(buf)) {
-            b'0'...b'9' => {}
+            b'0'..=b'9' => {}
             _ => {
                 return Err(self.error(ErrorCode::InvalidNumber));
             }
         }
 
-        while let c @ b'0'...b'9' = try!(self.peek_or_null()) {
+        while let c @ b'0'..=b'9' = try!(self.peek_or_null()) {
             self.eat_char();
             buf.push(c as char);
         }
@@ -824,7 +824,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
                     try!(self.ignore_integer());
                     None
                 }
-                b'0'...b'9' => {
+                b'0'..=b'9' => {
                     try!(self.ignore_integer());
                     None
                 }
@@ -897,12 +897,12 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         match try!(self.next_char_or_null()) {
             b'0' => {
                 // There can be only one leading '0'.
-                if let b'0'...b'9' = try!(self.peek_or_null()) {
+                if let b'0'..=b'9' = try!(self.peek_or_null()) {
                     return Err(self.peek_error(ErrorCode::InvalidNumber));
                 }
             }
-            b'1'...b'9' => {
-                while let b'0'...b'9' = try!(self.peek_or_null()) {
+            b'1'..=b'9' => {
+                while let b'0'..=b'9' = try!(self.peek_or_null()) {
                     self.eat_char();
                 }
             }
@@ -922,7 +922,7 @@ impl<'de, R: Read<'de>> Deserializer<R> {
         self.eat_char();
 
         let mut at_least_one_digit = false;
-        while let b'0'...b'9' = try!(self.peek_or_null()) {
+        while let b'0'..=b'9' = try!(self.peek_or_null()) {
             self.eat_char();
             at_least_one_digit = true;
         }
@@ -947,13 +947,13 @@ impl<'de, R: Read<'de>> Deserializer<R> {
 
         // Make sure a digit follows the exponent place.
         match try!(self.next_char_or_null()) {
-            b'0'...b'9' => {}
+            b'0'..=b'9' => {}
             _ => {
                 return Err(self.error(ErrorCode::InvalidNumber));
             }
         }
 
-        while let b'0'...b'9' = try!(self.peek_or_null()) {
+        while let b'0'..=b'9' = try!(self.peek_or_null()) {
             self.eat_char();
         }
 
@@ -1122,7 +1122,7 @@ impl<'de, 'a, R: Read<'de>> EDNDeserializer<'de> for &'a mut Deserializer<R> {
                     Reference::Copied(s) => EDNVisitor::visit_keyword(visitor, s)
                 }
             }
-            b'0'...b'9' => try!(self.parse_any_number(true)).visit(visitor),
+            b'0'..=b'9' => try!(self.parse_any_number(true)).visit(visitor),
             b'"' => {
                 self.eat_char();
                 self.scratch.clear();
@@ -1465,7 +1465,7 @@ impl<'de, 'a, R: Read<'de>> de::Deserializer<'de> for &'a mut Deserializer<R> {
                     }
                 }
             }
-            b'0'...b'9' => try!(self.parse_any_number(true)).visit(visitor),
+            b'0'..=b'9' => try!(self.parse_any_number(true)).visit(visitor),
             b'"' => {
                 self.eat_char();
                 self.scratch.clear();
